@@ -182,7 +182,7 @@ export default function App() {
     { id: 'csv', label: 'Exportar CSV', icon: FileText },
     { id: 'classifier', label: 'Classificador', icon: Shield },
     { id: 'finance', label: 'Financeiro', icon: DollarSign },
-    { id: 'sellers', label: 'Vendedor', icon: User },
+    { id: 'sellers', label: 'Vendedor', icon: UserIcon },
     { id: 'clients', label: 'Clientes', icon: Users },
     { id: 'calculator', label: 'Calcular Valor', icon: Calculator },
     { id: 'comparator', label: 'Comparador', icon: FileSearch },
@@ -202,7 +202,12 @@ export default function App() {
   }
 
   if (!user) {
-    return <Auth onAuthSuccess={() => {}} />;
+    return (
+      <>
+        <Toaster position="top-right" richColors />
+        <Auth onAuthSuccess={(u: any) => setUser(u)} />
+      </>
+    );
   }
 
   return (

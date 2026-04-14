@@ -20,10 +20,10 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: () => void }) {
         if (error) throw error;
         toast.success('Registration successful! Please check your email.');
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success('Welcome back!');
-        onAuthSuccess();
+        if (data.user) onAuthSuccess(data.user);
       }
     } catch (error: any) {
       toast.error(error.message || 'An error occurred');

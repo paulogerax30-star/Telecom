@@ -137,24 +137,24 @@ CREATE TABLE IF NOT EXISTS cdr_records (
 -- Inserindo Vendedores
 INSERT INTO sellers (id, name, email, status, portfolio_size, active_clients, default_rate, performance_score)
 VALUES 
-('c1c1c1c1-c1c1-c1c1-c1c1-c1c1c1c1c1c1', 'André', 'andre@gerax.com', 'ACTIVE', 45, 42, 2.5, 92),
-('c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2', 'Naira', 'naira@gerax.com', 'ACTIVE', 60, 55, 5.1, 78),
-('c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3', 'Dayana', 'dayana@gerax.com', 'ACTIVE', 20, 18, 1.2, 85);
+('11111111-1111-1111-1111-111111111111', 'André', 'andre@gerax.com', 'ACTIVE', 45, 42, 2.5, 92),
+('22222222-2222-2222-2222-222222222222', 'Naira', 'naira@gerax.com', 'ACTIVE', 60, 55, 5.1, 78),
+('33333333-3333-3333-3333-333333333333', 'Dayana', 'dayana@gerax.com', 'ACTIVE', 20, 18, 1.2, 85);
 
 -- Inserindo Rotas
 INSERT INTO routes (id, name, route_type, provider, bina_type, category, rate, cost, priority, status, asr, acd, pdd, total_calls, answered_calls, revenue, total_cost, profit)
 VALUES 
-('r1r1r1r1-r1r1-r1r1-r1r1-r1r1r1r1r1r1', 'TIM_SP_MOBILE_P1', 'GSM', 'TIM', 'CLI Aberta', 'Móvel-Móvel', 0.15, 0.10, 1, 'Ativa', 45.5, 120, 2.5, 1500, 682, 102.30, 68.20, 34.10),
-('r2r2r2r2-r2r2-r2r2-r2r2-r2r2r2r2r2r2', 'VIVO_RJ_FIXO_P2', 'SIP', 'VIVO', 'Fixa', 'Fixo-Fixo', 0.08, 0.05, 2, 'Ativa', 65.2, 180, 1.8, 2000, 1304, 160.00, 100.00, 60.00);
+('a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'TIM_SP_MOBILE_P1', 'GSM', 'TIM', 'CLI Aberta', 'Móvel-Móvel', 0.15, 0.10, 1, 'Ativa', 45.5, 120, 2.5, 1500, 682, 102.30, 68.20, 34.10),
+('b2b2b2b2-b2b2-b2b2-b2b2-b2b2b2b2b2b2', 'VIVO_RJ_FIXO_P2', 'SIP', 'VIVO', 'Fixa', 'Fixo-Fixo', 0.08, 0.05, 2, 'Ativa', 65.2, 180, 1.8, 2000, 1304, 160.00, 100.00, 60.00);
 
 -- Inserindo Comissões
 INSERT INTO commissions (seller_id, client_name, competence, invoice_amount, received_amount, commission_amount, status)
 VALUES 
-('c1c1c1c1-c1c1-c1c1-c1c1-c1c1c1c1c1c1', 'Telecom Corp', '2024-03', 15000.00, 15000.00, 750.00, 'RELEASED'),
-('c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2', 'CallCenter BR', '2024-03', 25000.00, 10000.00, 300.00, 'CALCULATED');
+('11111111-1111-1111-1111-111111111111', 'Telecom Corp', '2024-03', 15000.00, 15000.00, 750.00, 'RELEASED'),
+('22222222-2222-2222-2222-222222222222', 'CallCenter BR', '2024-03', 25000.00, 10000.00, 300.00, 'CALCULATED');
 
 -- Inserindo Transações Financeiras
 INSERT INTO transactions (id, entity_id, entity_name, type, category, description, competence, amount, status, priority)
 VALUES 
-('t1t1t1t1-t1t1-t1t1-t1t1-t1t1t1t1t1t1', 'e1', 'Telecom Corp', 'INCOME', 'BILLING', 'Faturamento Mensal Março', '2024-03', 15000.00, 'PENDING_APPROVAL', 'HIGH'),
-('t5t5t5t5-t5t5-t5t5-t5t5-t5t5t5t5t5t5', 'e4', 'CallCenter BR', 'INCOME', 'BILLING', 'Consumo Rotas Premium', '2024-03', 26700.00, 'PARTIALLY_PAID', 'CRITICAL');
+('e1e1e1e1-e1e1-e1e1-e1e1-e1e1e1e1e1e1', 'e1', 'Telecom Corp', 'INCOME', 'BILLING', 'Faturamento Mensal Março', '2024-03', 15000.00, 'PENDING_APPROVAL', 'HIGH'),
+('f5f5f5f5-f5f5-f5f5-f5f5-f5f5f5f5f5f5', 'e4', 'CallCenter BR', 'INCOME', 'BILLING', 'Consumo Rotas Premium', '2024-03', 26700.00, 'PARTIALLY_PAID', 'CRITICAL');
