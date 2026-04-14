@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { LayoutDashboard, PlusCircle, Search, FileText, Settings as SettingsIcon, Bell, CheckCircle2, AlertCircle, Clock, Filter, ChevronRight, Menu, X, Database, Activity, History as HistoryIcon, User, LogOut, Calculator, List, DollarSign, Shield, FileSearch, Ticket as TicketIcon, Users } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Search, FileText, Settings as SettingsIcon, Bell, CheckCircle2, AlertCircle, Clock, Filter, ChevronRight, Menu, X, Database, Activity, History as HistoryIcon, User as UserIcon, LogOut, Calculator, List, DollarSign, Shield, FileSearch, Ticket as TicketIcon, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Toaster, toast } from 'sonner';
 import { cn, isRoutePending, getDaysSinceLastTest, getRouteStatus } from './lib/utils';
@@ -22,6 +22,9 @@ import TicketsView from './components/TicketsView';
 import SellersView from './components/SellersView';
 import ClientsView from './components/ClientsView';
 import { Route, RouteCategory, RouteClassification, RouteStatus, RouteHistory, Seller, ClientRegistration } from './types';
+import { supabase } from './lib/supabase';
+import Auth from './components/Auth';
+import { User } from '@supabase/supabase-js';
 
 type Tab = 'dashboard' | 'register' | 'analysis' | 'finance' | 'settings' | 'csv' | 'calculator' | 'route-types' | 'classifier' | 'receipts-main' | 'comparator' | 'tickets' | 'sellers' | 'clients';
 
@@ -35,40 +38,90 @@ const INITIAL_ROUTE_TYPES: string[] = [
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [categories, setCategories] = useState<RouteCategory[]>(INITIAL_CATEGORIES);
   const [models, setModels] = useState<string[]>(INITIAL_ROUTE_TYPES);
   const [searchTerm, setSearchTerm] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [editingRoute, setEditingRoute] = useState<Route | null>(null);
-  const [showPendingAlert, setShowPendingAlert] = useState(true);
   const [history, setHistory] = useState<RouteHistory[]>([]);
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [clientRegistrations, setClientRegistrations] = useState<ClientRegistration[]>([]);
 
-  const addHistoryEntry = (route: Route, type: string, details: string) => {
-    const newEntry: RouteHistory = {
-      id: `h-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-      routeId: route.id,
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
+
+  const fetchData = async () => {
+    try {
+      const { data: routesData } = await supabase.from('routes').select('*');
+      const { data: sellersData } = await supabase.from('sellers').select('*');
+      const { data: historyData } = await supabase.from('route_history').select('*').order('date', { ascending: false });
+      const { data: clientsData } = await supabase.from('client_registrations').select('*');
+
+      if (routesData) setRoutes(routesData);
+      if (sellersData) setSellers(sellersData);
+      if (historyData) setHistory(historyData);
+      if (clientsData) setClientRegistrations(clientsData);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
+
+  const addHistoryEntry = async (route: Route, type: string, details: string) => {
+    const newEntry = {
+      route_id: route.id,
       date: new Date().toISOString(),
       status: route.status,
-      classification: 'Regular', // Default for history
-      testResult: type,
-      analyst: 'Sistema',
+      classification: 'Regular',
+      test_result: type,
+      analyst: user?.email || 'Sistema',
       observations: details
     };
-    setHistory(prev => [newEntry, ...prev].slice(0, 50)); // Keep last 50 entries
+    
+    const { data, error } = await supabase.from('route_history').insert([newEntry]).select();
+    if (error) console.error('Error adding history:', error);
+    if (data) setHistory(prev => [data[0], ...prev].slice(0, 50));
   };
 
-  const handleAddRoute = (newRoute: Route) => {
-    setRoutes(prev => [...prev, newRoute]);
-    addHistoryEntry(newRoute, 'Cadastro', `Nova rota cadastrada: ${newRoute.name}`);
-    setSearchTerm(''); // Clear search to ensure new route is visible
-    setActiveTab('analysis'); // Redirect to Analysis for better visibility
-    toast.success('Rota cadastrada com sucesso!');
+  const handleAddRoute = async (newRoute: Route) => {
+    const { data, error } = await supabase.from('routes').insert([newRoute]).select();
+    if (error) {
+      toast.error('Erro ao cadastrar rota: ' + error.message);
+      return;
+    }
+    if (data) {
+      setRoutes(prev => [...prev, data[0]]);
+      addHistoryEntry(data[0], 'Cadastro', `Nova rota cadastrada: ${data[0].name}`);
+      setSearchTerm('');
+      setActiveTab('analysis');
+      toast.success('Rota cadastrada com sucesso!');
+    }
   };
 
-  const handleUpdateRoute = (updatedRoute: Route) => {
+  const handleUpdateRoute = async (updatedRoute: Route) => {
+    const { error } = await supabase.from('routes').update(updatedRoute).eq('id', updatedRoute.id);
+    if (error) {
+      toast.error('Erro ao atualizar rota: ' + error.message);
+      return;
+    }
     setRoutes(prev => prev.map(r => r.id === updatedRoute.id ? updatedRoute : r));
     addHistoryEntry(updatedRoute, 'Edição', `Rota atualizada: ${updatedRoute.name}. Status: ${updatedRoute.status}`);
     setEditingRoute(null);
@@ -76,13 +129,24 @@ export default function App() {
     toast.success('Rota atualizada com sucesso!');
   };
 
-  const handleDeleteRoute = (id: string) => {
+  const handleDeleteRoute = async (id: string) => {
     const routeToDelete = routes.find(r => r.id === id);
+    const { error } = await supabase.from('routes').delete().eq('id', id);
+    if (error) {
+      toast.error('Erro ao excluir rota: ' + error.message);
+      return;
+    }
     if (routeToDelete) {
       addHistoryEntry(routeToDelete, 'Exclusão', `Rota excluída: ${routeToDelete.name}`);
     }
     setRoutes(prev => prev.filter(r => r.id !== id));
     toast.error('Rota excluída com sucesso!');
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    toast.info('Sessão encerrada.');
   };
 
   const handleEdit = (route: Route) => {
@@ -128,6 +192,18 @@ export default function App() {
   ];
 
   const criticalRoutesCount = processedRoutes.filter(r => r.asr < 20 || r.pdd > 5).length;
+
+  if (loading) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-[#1E293B]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Auth onAuthSuccess={() => {}} />;
+  }
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] text-slate-900 font-sans overflow-hidden">
@@ -182,6 +258,17 @@ export default function App() {
               )}
             </button>
           ))}
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-rose-400 hover:bg-rose-500/10 hover:text-rose-500 transition-all group"
+          >
+            <LogOut className="w-5 h-5 shrink-0 transition-transform duration-300 group-hover:scale-110" />
+            {isSidebarOpen && (
+              <span className="font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">
+                Sair
+              </span>
+            )}
+          </button>
         </nav>
 
         <div className="p-4 border-t border-slate-700/50">
@@ -296,24 +383,31 @@ export default function App() {
                   <SellersView 
                     sellers={sellers}
                     registrations={clientRegistrations}
-                    onAddSeller={(newSeller) => {
-                      const seller: Seller = {
-                        ...newSeller,
-                        id: `s-${Date.now()}`,
-                        createdAt: new Date().toISOString()
-                      };
-                      setSellers(prev => [...prev, seller]);
+                    onAddSeller={async (newSeller) => {
+                      const { data, error } = await supabase.from('sellers').insert([newSeller]).select();
+                      if (error) {
+                        toast.error('Erro ao adicionar vendedor: ' + error.message);
+                        return;
+                      }
+                      if (data) setSellers(prev => [...prev, data[0]]);
                     }}
-                    onRegisterClient={(newReg) => {
-                      const reg: ClientRegistration = {
-                        ...newReg,
-                        id: `reg-${Date.now()}`,
-                        createdAt: new Date().toISOString()
-                      };
-                      setClientRegistrations(prev => [...prev, reg]);
-                      toast.success('Ficha de cliente cadastrada com sucesso!');
+                    onRegisterClient={async (newReg) => {
+                      const { data, error } = await supabase.from('client_registrations').insert([newReg]).select();
+                      if (error) {
+                        toast.error('Erro ao cadastrar cliente: ' + error.message);
+                        return;
+                      }
+                      if (data) {
+                        setClientRegistrations(prev => [...prev, data[0]]);
+                        toast.success('Ficha de cliente cadastrada com sucesso!');
+                      }
                     }}
-                    onUpdateClient={(updatedReg) => {
+                    onUpdateClient={async (updatedReg) => {
+                      const { error } = await supabase.from('client_registrations').update(updatedReg).eq('id', updatedReg.id);
+                      if (error) {
+                        toast.error('Erro ao atualizar cliente: ' + error.message);
+                        return;
+                      }
                       setClientRegistrations(prev => prev.map(r => r.id === updatedReg.id ? updatedReg : r));
                     }}
                   />

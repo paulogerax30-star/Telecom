@@ -7,6 +7,16 @@ from datetime import datetime, timedelta
 import chardet
 import io
 import re
+import os
+from dotenv import load_dotenv
+from supabase import create_client, Client
+
+load_dotenv()
+
+# Configurações do Supabase
+url = os.environ.get("SUPABASE_URL")
+key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") # Usando service role para o backend
+supabase: Client = create_client(url, key) if url and key else None
 
 # =================================================================
 # CONFIGURAÇÃO DA PÁGINA E ESTILOS
@@ -314,11 +324,32 @@ def main():
                         st.write(f"- Média: {dur.mean():.1f}s")
                         st.write(f"- P90: {dur.quantile(0.9):.1f}s | P95: {dur.quantile(0.95):.1f}s")
                         
-                    if 'value' in mapping:
                         val = df[mapping['value']]
                         st.markdown("**Estatísticas Financeiras**")
                         st.write(f"- Valor Total: R$ {val.sum():,.2f}")
                         st.write(f"- Custo/Min Médio: R$ {(val.sum() / (dur.sum()/60) if dur.sum() > 0 else 0):.4f}")
+
+                st.markdown("---")
+                if supabase:
+                    if st.button("💾 Salvar Analise no Supabase"):
+                        with st.spinner("Salvando dados..."):
+                            try:
+                                # Preparar dados para salvar
+                                analysis_data = {
+                                    "name": f"Análise {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+                                    "total_calls": len(df),
+                                    "revenue": float(df[mapping['value']].sum()) if 'value' in mapping else 0,
+                                    "asr": float((df[mapping['sip_code']].astype(str).str.contains('200|OK|SUCCESS', case=False).mean() * 100)) if 'sip_code' in mapping else 0,
+                                    "pdd": float(df[mapping['pdd']].mean()) if 'pdd' in mapping else 0,
+                                    "status": "Finalizado"
+                                }
+                                # Inserir no Supabase (tabela routes para exemplo, ou criar uma nova)
+                                response = supabase.table("routes").insert(analysis_data).execute()
+                                st.success("✅ Análise salva com sucesso no Supabase!")
+                            except Exception as e:
+                                st.error(f"Erro ao salvar no Supabase: {e}")
+                else:
+                    st.warning("Conexão com Supabase não configurada (.env ausente)")
 
             # ---------------------------------------------------------
             # ABA 2: DASHBOARDS (PARTE 4)
