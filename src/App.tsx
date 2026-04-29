@@ -38,8 +38,8 @@ const INITIAL_ROUTE_TYPES: string[] = [
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>({ email: 'admin@local.test', id: 'mock-id' } as unknown as User);
+  const [loading, setLoading] = useState(false);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [categories, setCategories] = useState<RouteCategory[]>(INITIAL_CATEGORIES);
   const [models, setModels] = useState<string[]>(INITIAL_ROUTE_TYPES);
@@ -51,6 +51,7 @@ export default function App() {
   const [clientRegistrations, setClientRegistrations] = useState<ClientRegistration[]>([]);
 
   useEffect(() => {
+    /* --- CÓDIGO ORIGINAL DE AUTENTICAÇÃO COMENTADO ---
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
@@ -61,6 +62,7 @@ export default function App() {
     });
 
     return () => subscription.unsubscribe();
+    */
   }, []);
 
   useEffect(() => {
@@ -201,6 +203,7 @@ export default function App() {
     );
   }
 
+  /* --- VERIFICAÇÃO DE LOGIN COMENTADA TEMPORARIAMENTE ---
   if (!user) {
     return (
       <>
@@ -209,6 +212,7 @@ export default function App() {
       </>
     );
   }
+  */
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] text-slate-900 font-sans overflow-hidden">
