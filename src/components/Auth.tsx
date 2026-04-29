@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { LogIn, UserPlus, Mail, Lock, Loader2, Database, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function Auth({ onAuthSuccess }: { onAuthSuccess: () => void }) {
+export default function Auth({ onAuthSuccess }: { onAuthSuccess: (user: any) => void }) {
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
