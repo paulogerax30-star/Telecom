@@ -16,7 +16,8 @@ import {
   X,
   Save,
   Briefcase,
-  DollarSign
+  DollarSign,
+  Database
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -88,6 +89,8 @@ export default function SellersView({ sellers, registrations, onAddSeller, onReg
   const [sellerForm, setSellerForm] = useState({
     name: '',
     email: '',
+    phone: '',
+    birthDate: '',
     status: 'ACTIVE' as const
   });
 
@@ -181,7 +184,7 @@ export default function SellersView({ sellers, registrations, onAddSeller, onReg
     
     toast.success("Vendedor cadastrado com sucesso!");
     setActiveTab('list');
-    setSellerForm({ name: '', email: '', status: 'ACTIVE' });
+    setSellerForm({ name: '', email: '', phone: '', birthDate: '', status: 'ACTIVE' });
   };
 
   return (
@@ -346,6 +349,27 @@ export default function SellersView({ sellers, registrations, onAddSeller, onReg
                     onChange={(e) => setSellerForm(prev => ({ ...prev, email: e.target.value }))}
                     className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
                     placeholder="andre@empresa.com"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Número</label>
+                  <input 
+                    type="tel" 
+                    value={sellerForm.phone}
+                    onChange={(e) => setSellerForm(prev => ({ ...prev, phone: e.target.value }))}
+                    className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+                    placeholder="(00) 00000-0000"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Data de Nascimento</label>
+                  <input 
+                    type="date" 
+                    value={sellerForm.birthDate}
+                    onChange={(e) => setSellerForm(prev => ({ ...prev, birthDate: e.target.value }))}
+                    className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-slate-700"
                   />
                 </div>
 
@@ -664,49 +688,80 @@ export default function SellersView({ sellers, registrations, onAddSeller, onReg
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <div className="space-y-10">
+              {Array.from(new Set(registrations.map(r => r.serverId))).sort().map(serverId => {
+                const serverClients = registrations.filter(r => 
+                  r.serverId === serverId &&
+                  (r.clientName.toLowerCase().includes(clientSearchTerm.toLowerCase()) ||
+                   r.sellerName.toLowerCase().includes(clientSearchTerm.toLowerCase()))
+                );
+
+                if (serverClients.length === 0) return null;
+
+                return (
+                  <div key={serverId || 'unassigned'} className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-md">
+                        <Database className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
+                          Servidor {serverId || 'Não Definido'}
+                        </h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                          {serverClients.length} Cliente{serverClients.length !== 1 ? 's' : ''} alocado{serverClients.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                      {serverClients.map(reg => (
+                        <div 
+                          key={reg.id} 
+                          onClick={() => setSelectedClient(reg)}
+                          className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-blue-300 transition-all group cursor-pointer flex flex-col justify-between"
+                        >
+                          <div>
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 shrink-0">
+                                <Building2 className="w-4 h-4" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <h3 className="font-black text-slate-900 uppercase tracking-tight text-xs truncate">{reg.clientName}</h3>
+                                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest truncate">{reg.cnpj}</p>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-2 border-t border-slate-50 pt-3">
+                              <div>
+                                <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest">Vendedor</p>
+                                <p className="text-[9px] font-black text-slate-700 uppercase truncate">{reg.sellerName}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest">Data</p>
+                                <p className="text-[9px] font-black text-slate-700">{new Date(reg.createdAt).toLocaleDateString('pt-BR')}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 flex justify-end">
+                            <span className="text-[8px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                              Ficha Completa <ChevronRight className="w-2.5 h-2.5" />
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+
               {registrations.filter(r => 
                 r.clientName.toLowerCase().includes(clientSearchTerm.toLowerCase()) ||
                 r.sellerName.toLowerCase().includes(clientSearchTerm.toLowerCase())
-              ).map((reg) => (
-                <div 
-                  key={reg.id} 
-                  onClick={() => setSelectedClient(reg)}
-                  className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all group cursor-pointer flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 shrink-0">
-                        <Building2 className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-black text-slate-900 uppercase tracking-tight text-xs truncate">{reg.clientName}</h3>
-                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest truncate">{reg.cnpj}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-2 border-t border-slate-50 pt-3">
-                      <div>
-                        <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest">Vendedor</p>
-                        <p className="text-[9px] font-black text-slate-700 uppercase truncate">{reg.sellerName}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest">Data</p>
-                        <p className="text-[9px] font-black text-slate-700">{new Date(reg.createdAt).toLocaleDateString('pt-BR')}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 flex justify-end">
-                    <span className="text-[8px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                      Ficha Completa <ChevronRight className="w-2.5 h-2.5" />
-                    </span>
-                  </div>
-                </div>
-              ))}
-              {registrations.length === 0 && (
+              ).length === 0 && (
                 <div className="col-span-full py-12 text-center bg-white rounded-[32px] border-2 border-dashed border-slate-100">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Nenhuma ficha cadastrada ainda</p>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Nenhuma ficha encontrada</p>
                 </div>
               )}
             </div>
