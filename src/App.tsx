@@ -25,6 +25,7 @@ import { Route, RouteCategory, RouteClassification, RouteStatus, RouteHistory, S
 import { supabase } from './lib/supabase';
 import Auth from './components/Auth';
 import { User } from '@supabase/supabase-js';
+import { mapKeysToSnakeCase, mapKeysToCamelCase } from './lib/database';
 
 type Tab = 'dashboard' | 'register' | 'analysis' | 'finance' | 'settings' | 'csv' | 'calculator' | 'route-types' | 'classifier' | 'receipts-main' | 'comparator' | 'tickets' | 'sellers' | 'clients';
 
@@ -49,6 +50,13 @@ export default function App() {
   const [history, setHistory] = useState<RouteHistory[]>([]);
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [clientRegistrations, setClientRegistrations] = useState<ClientRegistration[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [commissions, setCommissions] = useState<any[]>([]);
+  const [cdrRecords, setCdrRecords] = useState<any[]>([]);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [pendencies, setPendencies] = useState<Pendency[]>([]);
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
 
   useEffect(() => {
     /* --- CÓDIGO ORIGINAL DE AUTENTICAÇÃO COMENTADO ---
@@ -77,11 +85,23 @@ export default function App() {
       const { data: sellersData } = await supabase.from('sellers').select('*');
       const { data: historyData } = await supabase.from('route_history').select('*').order('date', { ascending: false });
       const { data: clientsData } = await supabase.from('client_registrations').select('*');
+      const { data: transactionsData } = await supabase.from('transactions').select('*');
+      const { data: commissionsData } = await supabase.from('commissions').select('*');
+      const { data: cdrRecordsData } = await supabase.from('cdr_records').select('*');
+      const { data: ticketsData } = await supabase.from('tickets').select('*');
+      const { data: pendenciesData } = await supabase.from('pendencies').select('*');
+      const { data: receiptsData } = await supabase.from('receipts').select('*');
 
-      if (routesData) setRoutes(routesData);
-      if (sellersData) setSellers(sellersData);
-      if (historyData) setHistory(historyData);
-      if (clientsData) setClientRegistrations(clientsData);
+      if (routesData) setRoutes(mapKeysToCamelCase(routesData));
+      if (sellersData) setSellers(mapKeysToCamelCase(sellersData));
+      if (historyData) setHistory(mapKeysToCamelCase(historyData));
+      if (clientsData) setClientRegistrations(mapKeysToCamelCase(clientsData));
+      if (transactionsData) setTransactions(mapKeysToCamelCase(transactionsData));
+      if (commissionsData) setCommissions(mapKeysToCamelCase(commissionsData));
+      if (cdrRecordsData) setCdrRecords(mapKeysToCamelCase(cdrRecordsData));
+      if (ticketsData) setTickets(mapKeysToCamelCase(ticketsData));
+      if (pendenciesData) setPendencies(mapKeysToCamelCase(pendenciesData));
+      if (receiptsData) setReceipts(mapKeysToCamelCase(receiptsData));
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -98,20 +118,21 @@ export default function App() {
       observations: details
     };
     
-    const { data, error } = await supabase.from('route_history').insert([newEntry]).select();
+    const { data, error } = await supabase.from('route_history').insert([mapKeysToSnakeCase(newEntry)]).select();
     if (error) console.error('Error adding history:', error);
-    if (data) setHistory(prev => [data[0], ...prev].slice(0, 50));
+    if (data) setHistory(prev => [mapKeysToCamelCase(data[0]), ...prev].slice(0, 50));
   };
 
   const handleAddRoute = async (newRoute: Route) => {
-    const { data, error } = await supabase.from('routes').insert([newRoute]).select();
+    const { data, error } = await supabase.from('routes').insert([mapKeysToSnakeCase(newRoute)]).select();
     if (error) {
       toast.error('Erro ao cadastrar rota: ' + error.message);
       return;
     }
     if (data) {
-      setRoutes(prev => [...prev, data[0]]);
-      addHistoryEntry(data[0], 'Cadastro', `Nova rota cadastrada: ${data[0].name}`);
+      const camelData = mapKeysToCamelCase(data[0]);
+      setRoutes(prev => [...prev, camelData]);
+      addHistoryEntry(camelData, 'Cadastro', `Nova rota cadastrada: ${camelData.name}`);
       setSearchTerm('');
       setActiveTab('analysis');
       toast.success('Rota cadastrada com sucesso!');
@@ -119,7 +140,7 @@ export default function App() {
   };
 
   const handleUpdateRoute = async (updatedRoute: Route) => {
-    const { error } = await supabase.from('routes').update(updatedRoute).eq('id', updatedRoute.id);
+    const { error } = await supabase.from('routes').update(mapKeysToSnakeCase(updatedRoute)).eq('id', updatedRoute.id);
     if (error) {
       toast.error('Erro ao atualizar rota: ' + error.message);
       return;
@@ -351,9 +372,86 @@ export default function App() {
                   />
                 )}
                 {activeTab === 'classifier' && <CallClassifier />}
-                {activeTab === 'finance' && <FinanceView />}
-                {activeTab === 'receipts-main' && <ReceiptsView />}
-                {activeTab === 'tickets' && <TicketsView />}
+                {activeTab === 'finance' && (
+                  <FinanceView 
+                    transactions={transactions}
+                    onAddTransaction={async (newT) => {
+                      const { data, error } = await supabase.from('transactions').insert([mapKeysToSnakeCase(newT)]).select();
+                      if (error) {
+                        toast.error('Erro ao adicionar transação: ' + error.message);
+                        return;
+                      }
+                      if (data) setTransactions(prev => [mapKeysToCamelCase(data[0]), ...prev]);
+                    }}
+                    onUpdateTransaction={async (updatedT) => {
+                      const { error } = await supabase.from('transactions').update(mapKeysToSnakeCase(updatedT)).eq('id', updatedT.id);
+                      if (error) {
+                        toast.error('Erro ao atualizar transação: ' + error.message);
+                        return;
+                      }
+                      setTransactions(prev => prev.map(t => t.id === updatedT.id ? updatedT : t));
+                    }}
+                  />
+                )}
+                {activeTab === 'receipts-main' && (
+                  <ReceiptsView 
+                    pendencies={pendencies}
+                    receipts={receipts}
+                    onAddPendency={async (newP) => {
+                      const { data, error } = await supabase.from('pendencies').insert([mapKeysToSnakeCase(newP)]).select();
+                      if (error) {
+                        toast.error('Erro ao criar pendência: ' + error.message);
+                        return;
+                      }
+                      if (data) setPendencies(prev => [mapKeysToCamelCase(data[0]), ...prev]);
+                    }}
+                    onAddReceipt={async (newR) => {
+                      const { data, error } = await supabase.from('receipts').insert([mapKeysToSnakeCase(newR)]).select();
+                      if (error) {
+                        toast.error('Erro ao salvar comprovante: ' + error.message);
+                        return;
+                      }
+                      if (data) setReceipts(prev => [mapKeysToCamelCase(data[0]), ...prev]);
+                    }}
+                    onUpdateReceipt={async (updatedR) => {
+                      const { error } = await supabase.from('receipts').update(mapKeysToSnakeCase(updatedR)).eq('id', updatedR.id);
+                      if (error) {
+                        toast.error('Erro ao atualizar comprovante: ' + error.message);
+                        return;
+                      }
+                      setReceipts(prev => prev.map(r => r.id === updatedR.id ? updatedR : r));
+                    }}
+                    onUpdatePendency={async (updatedP) => {
+                      const { error } = await supabase.from('pendencies').update(mapKeysToSnakeCase(updatedP)).eq('id', updatedP.id);
+                      if (error) {
+                        toast.error('Erro ao atualizar pendência: ' + error.message);
+                        return;
+                      }
+                      setPendencies(prev => prev.map(p => p.id === updatedP.id ? updatedP : p));
+                    }}
+                  />
+                )}
+                {activeTab === 'tickets' && (
+                  <TicketsView 
+                    tickets={tickets}
+                    onAddTicket={async (newT) => {
+                      const { data, error } = await supabase.from('tickets').insert([mapKeysToSnakeCase(newT)]).select();
+                      if (error) {
+                        toast.error('Erro ao abrir chamado: ' + error.message);
+                        return;
+                      }
+                      if (data) setTickets(prev => [mapKeysToCamelCase(data[0]), ...prev]);
+                    }}
+                    onUpdateTicket={async (updatedT) => {
+                      const { error } = await supabase.from('tickets').update(mapKeysToSnakeCase(updatedT)).eq('id', updatedT.id);
+                      if (error) {
+                        toast.error('Erro ao atualizar chamado: ' + error.message);
+                        return;
+                      }
+                      setTickets(prev => prev.map(t => t.id === updatedT.id ? updatedT : t));
+                    }}
+                  />
+                )}
                 {activeTab === 'register' && (
                   <RouteRegistration 
                     onAdd={handleAddRoute} 
@@ -393,26 +491,26 @@ export default function App() {
                     sellers={sellers}
                     registrations={clientRegistrations}
                     onAddSeller={async (newSeller) => {
-                      const { data, error } = await supabase.from('sellers').insert([newSeller]).select();
+                      const { data, error } = await supabase.from('sellers').insert([mapKeysToSnakeCase(newSeller)]).select();
                       if (error) {
                         toast.error('Erro ao adicionar vendedor: ' + error.message);
                         return;
                       }
-                      if (data) setSellers(prev => [...prev, data[0]]);
+                      if (data) setSellers(prev => [...prev, mapKeysToCamelCase(data[0])]);
                     }}
                     onRegisterClient={async (newReg) => {
-                      const { data, error } = await supabase.from('client_registrations').insert([newReg]).select();
+                      const { data, error } = await supabase.from('client_registrations').insert([mapKeysToSnakeCase(newReg)]).select();
                       if (error) {
                         toast.error('Erro ao cadastrar cliente: ' + error.message);
                         return;
                       }
                       if (data) {
-                        setClientRegistrations(prev => [...prev, data[0]]);
+                        setClientRegistrations(prev => [...prev, mapKeysToCamelCase(data[0])]);
                         toast.success('Ficha de cliente cadastrada com sucesso!');
                       }
                     }}
                     onUpdateClient={async (updatedReg) => {
-                      const { error } = await supabase.from('client_registrations').update(updatedReg).eq('id', updatedReg.id);
+                      const { error } = await supabase.from('client_registrations').update(mapKeysToSnakeCase(updatedReg)).eq('id', updatedReg.id);
                       if (error) {
                         toast.error('Erro ao atualizar cliente: ' + error.message);
                         return;

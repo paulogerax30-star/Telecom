@@ -26,8 +26,15 @@ const INITIAL_TICKETS: Ticket[] = [];
 
 const SUPPLIERS = ['DATORA', 'CELL', 'AGITEL', 'MATRIX', 'NEWVOICE', 'SIP200', 'TENTEC', 'AE', '4PS', 'NETVOIP', 'BFT', 'GOSAT', 'ATOM'];
 
-export default function TicketsView() {
-  const [tickets, setTickets] = useState<Ticket[]>(INITIAL_TICKETS);
+export default function TicketsView({ 
+  tickets, 
+  onAddTicket, 
+  onUpdateTicket 
+}: { 
+  tickets: Ticket[], 
+  onAddTicket: (t: Ticket) => void, 
+  onUpdateTicket: (t: Ticket) => void 
+}) {
   const [activeSupplier, setActiveSupplier] = useState('DATORA');
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddingTicket, setIsAddingTicket] = useState(false);
@@ -64,15 +71,18 @@ export default function TicketsView() {
       print: newTicket.print
     };
 
-    setTickets(prev => [ticket, ...prev]);
+    onAddTicket(ticket);
     setIsAddingTicket(false);
     setNewTicket({ status: 'ABERTO', date: new Date().toISOString(), supplier: activeSupplier });
     toast.success('Chamado aberto com sucesso!');
   };
 
   const handleUpdateStatus = (id: string, newStatus: TicketStatus) => {
-    setTickets(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t));
-    toast.success(`Status do chamado atualizado para ${newStatus}`);
+    const ticket = tickets.find(t => t.id === id);
+    if (ticket) {
+      onUpdateTicket({ ...ticket, status: newStatus });
+      toast.success(`Status do chamado atualizado para ${newStatus}`);
+    }
   };
 
   return (

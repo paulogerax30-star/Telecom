@@ -41,10 +41,22 @@ import {
 
 type TabType = 'dashboard' | 'pendencies' | 'receipts' | 'validation' | 'history';
 
-export default function ReceiptsView() {
+export default function ReceiptsView({
+  pendencies,
+  receipts,
+  onAddPendency,
+  onAddReceipt,
+  onUpdateReceipt,
+  onUpdatePendency
+}: {
+  pendencies: Pendency[],
+  receipts: Receipt[],
+  onAddPendency: (p: Pendency) => void,
+  onAddReceipt: (r: Receipt) => void,
+  onUpdateReceipt: (r: Receipt) => void,
+  onUpdatePendency: (p: Pendency) => void
+}) {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
-  const [pendencies, setPendencies] = useState<Pendency[]>([]);
-  const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
   // Form states
@@ -101,7 +113,7 @@ export default function ReceiptsView() {
       status: 'PENDING',
       responsibleUser: 'Admin'
     };
-    setPendencies([newPendency, ...pendencies]);
+    onAddPendency(newPendency);
     addHistory('Criação de Pendência', `Pendência ${newPendency.id} criada no valor de R$ ${amount}`, undefined, 'PENDING');
     setShowAddPendency(false);
   };
@@ -120,12 +132,13 @@ export default function ReceiptsView() {
       createdByUser: 'Admin',
       createdAt: new Date().toISOString()
     };
-    setReceipts([newReceipt, ...receipts]);
+    onAddReceipt(newReceipt);
     
     if (pendencyId) {
-      setPendencies(prev => prev.map(p => 
-        p.id === pendencyId ? { ...p, status: 'LINKED' } : p
-      ));
+      const pendency = pendencies.find(p => p.id === pendencyId);
+      if (pendency) {
+        onUpdatePendency({ ...pendency, status: 'LINKED' });
+      }
       addHistory('Vínculo de Comprovante', `Comprovante ${newReceipt.id} vinculado à pendência ${pendencyId}`, 'PENDING', 'LINKED');
     } else {
       addHistory('Criação de Comprovante', `Comprovante ${newReceipt.id} criado no valor de R$ ${amount}`, undefined, 'PENDING');
@@ -141,15 +154,14 @@ export default function ReceiptsView() {
 
     const prevStatus = receipt.status;
     
-    setReceipts(prev => prev.map(r => 
-      r.id === receiptId ? { ...r, status, observation } : r
-    ));
+    onUpdateReceipt({ ...receipt, status, observation });
 
     if (receipt.linkedPendencyId) {
       const pendencyStatus: PendencyStatus = status === 'VALIDATED' ? 'VALIDATED' : status === 'REJECTED' ? 'REJECTED' : 'DIVERGENT';
-      setPendencies(prev => prev.map(p => 
-        p.id === receipt.linkedPendencyId ? { ...p, status: pendencyStatus, observation } : p
-      ));
+      const pendency = pendencies.find(p => p.id === receipt.linkedPendencyId);
+      if (pendency) {
+        onUpdatePendency({ ...pendency, status: pendencyStatus, observation });
+      }
     }
 
     addHistory('Validação', `Comprovante ${receiptId} validado como ${status}`, prevStatus, status);

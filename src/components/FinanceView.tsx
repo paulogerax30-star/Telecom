@@ -51,9 +51,16 @@ import { ptBR } from 'date-fns/locale';
 
 type FinanceTab = 'overview' | 'cashflow' | 'billing' | 'payable' | 'receivable' | 'netting' | 'commissions';
 
-export default function FinanceView() {
+export default function FinanceView({ 
+  transactions, 
+  onAddTransaction, 
+  onUpdateTransaction 
+}: { 
+  transactions: Transaction[], 
+  onAddTransaction: (t: Transaction) => void, 
+  onUpdateTransaction: (t: Transaction) => void 
+}) {
   const [activeSubTab, setActiveSubTab] = useState<FinanceTab>('overview');
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [selectedPayableCategory, setSelectedPayableCategory] = useState('Todas');
   const [nettingSessions, setNettingSessions] = useState<NettingSession[]>([]);
   const [isPayableModalOpen, setIsPayableModalOpen] = useState(false);
@@ -82,25 +89,23 @@ export default function FinanceView() {
   });
 
   const handlePayTransaction = (id: string) => {
-    setTransactions(prev => prev.map(t => {
-      if (t.id === id) {
-        return {
-          ...t,
-          status: 'PAID',
-          paymentDate: format(new Date(), 'yyyy-MM-dd'),
-          amountReceived: t.amount,
-          openBalance: 0
-        };
-      }
-      return t;
-    }));
-    toast.success('Pagamento baixado com sucesso!');
+    const transaction = transactions.find(t => t.id === id);
+    if (transaction) {
+      onUpdateTransaction({
+        ...transaction,
+        status: 'PAID',
+        paymentDate: format(new Date(), 'yyyy-MM-dd'),
+        amountReceived: transaction.amount,
+        openBalance: 0
+      });
+      toast.success('Pagamento baixado com sucesso!');
+    }
   };
 
   const handleAddPayable = (e: React.FormEvent) => {
     e.preventDefault();
     const newTransaction: Transaction = {
-      id: `t-${Date.now()}`,
+      id: crypto.randomUUID(),
       entityId: `e-${Date.now()}`,
       entityName: payableForm.entityName,
       type: 'EXPENSE',
@@ -128,7 +133,7 @@ export default function FinanceView() {
       updatedAt: new Date().toISOString()
     };
 
-    setTransactions(prev => [newTransaction, ...prev]);
+    onAddTransaction(newTransaction);
     setIsPayableModalOpen(false);
     setPayableForm({
       entityName: '',
