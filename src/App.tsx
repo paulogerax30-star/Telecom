@@ -26,6 +26,8 @@ import { supabase } from './lib/supabase';
 import Auth from './components/Auth';
 import { User } from '@supabase/supabase-js';
 import { mapKeysToSnakeCase, mapKeysToCamelCase } from './lib/database';
+import { useAuth } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 
 type Tab = 'dashboard' | 'register' | 'analysis' | 'finance' | 'settings' | 'csv' | 'calculator' | 'route-types' | 'classifier' | 'receipts-main' | 'comparator' | 'tickets' | 'sellers' | 'clients';
 
@@ -38,8 +40,8 @@ const INITIAL_ROUTE_TYPES: string[] = [
 ];
 
 export default function App() {
+  const { user, loading: authLoading, signOut, hasPermission, isMaster } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
-  const [user, setUser] = useState<User | null>({ email: 'admin@local.test', id: 'mock-id' } as unknown as User);
   const [loading, setLoading] = useState(false);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [categories, setCategories] = useState<RouteCategory[]>(INITIAL_CATEGORIES);
@@ -59,18 +61,7 @@ export default function App() {
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
 
   useEffect(() => {
-    /* --- CÓDIGO ORIGINAL DE AUTENTICAÇÃO COMENTADO ---
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-    */
+    // Auth logic is now handled in AuthContext
   }, []);
 
   useEffect(() => {
@@ -167,8 +158,7 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
+    await signOut();
     toast.info('Sessão encerrada.');
   };
 
@@ -214,9 +204,17 @@ export default function App() {
     { id: 'settings', label: 'Configurações', icon: SettingsIcon },
   ];
 
+  const filteredMenuItems = menuItems.filter(item => {
+    if (item.id === 'finance') return hasPermission('can_view_finance');
+    if (item.id === 'register' || item.id === 'analysis' || item.id === 'route-types') return hasPermission('can_manage_routes');
+    if (item.id === 'sellers' || item.id === 'clients') return hasPermission('can_view_sellers');
+    if (item.id === 'tickets') return hasPermission('can_manage_tickets');
+    return true; // Dashboard, Settings, etc are accessible by all for now (RBAC management is inside Settings)
+  });
+
   const criticalRoutesCount = processedRoutes.filter(r => r.asr < 20 || r.pdd > 5).length;
 
-  if (loading) {
+  if (authLoading || (user && loading)) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-[#1E293B]">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -224,16 +222,14 @@ export default function App() {
     );
   }
 
-  /* --- VERIFICAÇÃO DE LOGIN COMENTADA TEMPORARIAMENTE ---
   if (!user) {
     return (
       <>
         <Toaster position="top-right" richColors />
-        <Auth onAuthSuccess={(u: any) => setUser(u)} />
+        <Auth onAuthSuccess={() => {}} />
       </>
     );
   }
-  */
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] text-slate-900 font-sans overflow-hidden">
@@ -256,7 +252,7 @@ export default function App() {
         </div>
 
         <nav className="flex-1 py-4 px-3 space-y-1.5 overflow-y-auto custom-scrollbar">
-          {menuItems.map((item) => (
+          {filteredMenuItems.map((item) => (
             <button
               key={item.id}
               onClick={() => {
@@ -371,156 +367,176 @@ export default function App() {
                     history={history}
                   />
                 )}
-                {activeTab === 'classifier' && <CallClassifier />}
+                {activeTab === 'classifier' && (
+                  <ProtectedRoute requiredPermission="can_manage_routes">
+                    <CallClassifier />
+                  </ProtectedRoute>
+                )}
                 {activeTab === 'finance' && (
-                  <FinanceView 
-                    transactions={transactions}
-                    onAddTransaction={async (newT) => {
-                      const { data, error } = await supabase.from('transactions').insert([mapKeysToSnakeCase(newT)]).select();
-                      if (error) {
-                        toast.error('Erro ao adicionar transação: ' + error.message);
-                        return;
-                      }
-                      if (data) setTransactions(prev => [mapKeysToCamelCase(data[0]), ...prev]);
-                    }}
-                    onUpdateTransaction={async (updatedT) => {
-                      const { error } = await supabase.from('transactions').update(mapKeysToSnakeCase(updatedT)).eq('id', updatedT.id);
-                      if (error) {
-                        toast.error('Erro ao atualizar transação: ' + error.message);
-                        return;
-                      }
-                      setTransactions(prev => prev.map(t => t.id === updatedT.id ? updatedT : t));
-                    }}
-                  />
+                  <ProtectedRoute requiredPermission="can_view_finance">
+                    <FinanceView 
+                      transactions={transactions}
+                      onAddTransaction={async (newT) => {
+                        const { data, error } = await supabase.from('transactions').insert([mapKeysToSnakeCase(newT)]).select();
+                        if (error) {
+                          toast.error('Erro ao adicionar transação: ' + error.message);
+                          return;
+                        }
+                        if (data) setTransactions(prev => [mapKeysToCamelCase(data[0]), ...prev]);
+                      }}
+                      onUpdateTransaction={async (updatedT) => {
+                        const { error } = await supabase.from('transactions').update(mapKeysToSnakeCase(updatedT)).eq('id', updatedT.id);
+                        if (error) {
+                          toast.error('Erro ao atualizar transação: ' + error.message);
+                          return;
+                        }
+                        setTransactions(prev => prev.map(t => t.id === updatedT.id ? updatedT : t));
+                      }}
+                    />
+                  </ProtectedRoute>
                 )}
                 {activeTab === 'receipts-main' && (
-                  <ReceiptsView 
-                    pendencies={pendencies}
-                    receipts={receipts}
-                    onAddPendency={async (newP) => {
-                      const { data, error } = await supabase.from('pendencies').insert([mapKeysToSnakeCase(newP)]).select();
-                      if (error) {
-                        toast.error('Erro ao criar pendência: ' + error.message);
-                        return;
-                      }
-                      if (data) setPendencies(prev => [mapKeysToCamelCase(data[0]), ...prev]);
-                    }}
-                    onAddReceipt={async (newR) => {
-                      const { data, error } = await supabase.from('receipts').insert([mapKeysToSnakeCase(newR)]).select();
-                      if (error) {
-                        toast.error('Erro ao salvar comprovante: ' + error.message);
-                        return;
-                      }
-                      if (data) setReceipts(prev => [mapKeysToCamelCase(data[0]), ...prev]);
-                    }}
-                    onUpdateReceipt={async (updatedR) => {
-                      const { error } = await supabase.from('receipts').update(mapKeysToSnakeCase(updatedR)).eq('id', updatedR.id);
-                      if (error) {
-                        toast.error('Erro ao atualizar comprovante: ' + error.message);
-                        return;
-                      }
-                      setReceipts(prev => prev.map(r => r.id === updatedR.id ? updatedR : r));
-                    }}
-                    onUpdatePendency={async (updatedP) => {
-                      const { error } = await supabase.from('pendencies').update(mapKeysToSnakeCase(updatedP)).eq('id', updatedP.id);
-                      if (error) {
-                        toast.error('Erro ao atualizar pendência: ' + error.message);
-                        return;
-                      }
-                      setPendencies(prev => prev.map(p => p.id === updatedP.id ? updatedP : p));
-                    }}
-                  />
+                  <ProtectedRoute requiredPermission="can_view_finance">
+                    <ReceiptsView 
+                      pendencies={pendencies}
+                      receipts={receipts}
+                      onAddPendency={async (newP) => {
+                        const { data, error } = await supabase.from('pendencies').insert([mapKeysToSnakeCase(newP)]).select();
+                        if (error) {
+                          toast.error('Erro ao criar pendência: ' + error.message);
+                          return;
+                        }
+                        if (data) setPendencies(prev => [mapKeysToCamelCase(data[0]), ...prev]);
+                      }}
+                      onAddReceipt={async (newR) => {
+                        const { data, error } = await supabase.from('receipts').insert([mapKeysToSnakeCase(newR)]).select();
+                        if (error) {
+                          toast.error('Erro ao salvar comprovante: ' + error.message);
+                          return;
+                        }
+                        if (data) setReceipts(prev => [mapKeysToCamelCase(data[0]), ...prev]);
+                      }}
+                      onUpdateReceipt={async (updatedR) => {
+                        const { error } = await supabase.from('receipts').update(mapKeysToSnakeCase(updatedR)).eq('id', updatedR.id);
+                        if (error) {
+                          toast.error('Erro ao atualizar comprovante: ' + error.message);
+                          return;
+                        }
+                        setReceipts(prev => prev.map(r => r.id === updatedR.id ? updatedR : r));
+                      }}
+                      onUpdatePendency={async (updatedP) => {
+                        const { error } = await supabase.from('pendencies').update(mapKeysToSnakeCase(updatedP)).eq('id', updatedP.id);
+                        if (error) {
+                          toast.error('Erro ao atualizar pendência: ' + error.message);
+                          return;
+                        }
+                        setPendencies(prev => prev.map(p => p.id === updatedP.id ? updatedP : p));
+                      }}
+                    />
+                  </ProtectedRoute>
                 )}
                 {activeTab === 'tickets' && (
-                  <TicketsView 
-                    tickets={tickets}
-                    onAddTicket={async (newT) => {
-                      const { data, error } = await supabase.from('tickets').insert([mapKeysToSnakeCase(newT)]).select();
-                      if (error) {
-                        toast.error('Erro ao abrir chamado: ' + error.message);
-                        return;
-                      }
-                      if (data) setTickets(prev => [mapKeysToCamelCase(data[0]), ...prev]);
-                    }}
-                    onUpdateTicket={async (updatedT) => {
-                      const { error } = await supabase.from('tickets').update(mapKeysToSnakeCase(updatedT)).eq('id', updatedT.id);
-                      if (error) {
-                        toast.error('Erro ao atualizar chamado: ' + error.message);
-                        return;
-                      }
-                      setTickets(prev => prev.map(t => t.id === updatedT.id ? updatedT : t));
-                    }}
-                  />
+                  <ProtectedRoute requiredPermission="can_manage_tickets">
+                    <TicketsView 
+                      tickets={tickets}
+                      onAddTicket={async (newT) => {
+                        const { data, error } = await supabase.from('tickets').insert([mapKeysToSnakeCase(newT)]).select();
+                        if (error) {
+                          toast.error('Erro ao abrir chamado: ' + error.message);
+                          return;
+                        }
+                        if (data) setTickets(prev => [mapKeysToCamelCase(data[0]), ...prev]);
+                      }}
+                      onUpdateTicket={async (updatedT) => {
+                        const { error } = await supabase.from('tickets').update(mapKeysToSnakeCase(updatedT)).eq('id', updatedT.id);
+                        if (error) {
+                          toast.error('Erro ao atualizar chamado: ' + error.message);
+                          return;
+                        }
+                        setTickets(prev => prev.map(t => t.id === updatedT.id ? updatedT : t));
+                      }}
+                    />
+                  </ProtectedRoute>
                 )}
                 {activeTab === 'register' && (
-                  <RouteRegistration 
-                    onAdd={handleAddRoute} 
-                    onUpdate={handleUpdateRoute}
-                    onDelete={handleDeleteRoute}
-                    onEdit={handleEdit}
-                    editingRoute={editingRoute}
-                    routes={processedRoutes}
-                    models={models}
-                    onAddModel={handleAddModel}
-                    searchTerm={searchTerm}
-                    onSearchChange={setSearchTerm}
-                  />
+                  <ProtectedRoute requiredPermission="can_manage_routes">
+                    <RouteRegistration 
+                      onAdd={handleAddRoute} 
+                      onUpdate={handleUpdateRoute}
+                      onDelete={handleDeleteRoute}
+                      onEdit={handleEdit}
+                      editingRoute={editingRoute}
+                      routes={processedRoutes}
+                      models={models}
+                      onAddModel={handleAddModel}
+                      searchTerm={searchTerm}
+                      onSearchChange={setSearchTerm}
+                    />
+                  </ProtectedRoute>
                 )}
                 {activeTab === 'analysis' && (
-                  <RouteAnalysis 
-                    routes={processedRoutes} 
-                    onUpdate={handleUpdateRoute}
-                    onEdit={handleEdit}
-                    onDelete={handleDeleteRoute}
-                    searchTerm={searchTerm}
-                    onSearchChange={setSearchTerm}
-                  />
+                  <ProtectedRoute requiredPermission="can_manage_routes">
+                    <RouteAnalysis 
+                      routes={processedRoutes} 
+                      onUpdate={handleUpdateRoute}
+                      onEdit={handleEdit}
+                      onDelete={handleDeleteRoute}
+                      searchTerm={searchTerm}
+                      onSearchChange={setSearchTerm}
+                    />
+                  </ProtectedRoute>
                 )}
                 {activeTab === 'csv' && <CSVAnalysis />}
                 {activeTab === 'comparator' && <CSVComparator />}
                 {activeTab === 'calculator' && <ValueCalculator />}
                 {activeTab === 'route-types' && (
-                  <RouteTypesView 
-                    routes={processedRoutes} 
-                    searchTerm={searchTerm}
-                    onSearchChange={setSearchTerm}
-                  />
+                  <ProtectedRoute requiredPermission="can_manage_routes">
+                    <RouteTypesView 
+                      routes={processedRoutes} 
+                      searchTerm={searchTerm}
+                      onSearchChange={setSearchTerm}
+                    />
+                  </ProtectedRoute>
                 )}
                 { activeTab === 'sellers' && (
-                  <SellersView 
-                    sellers={sellers}
-                    registrations={clientRegistrations}
-                    onAddSeller={async (newSeller) => {
-                      const { data, error } = await supabase.from('sellers').insert([mapKeysToSnakeCase(newSeller)]).select();
-                      if (error) {
-                        toast.error('Erro ao adicionar vendedor: ' + error.message);
-                        return;
-                      }
-                      if (data) setSellers(prev => [...prev, mapKeysToCamelCase(data[0])]);
-                    }}
-                    onRegisterClient={async (newReg) => {
-                      const { data, error } = await supabase.from('client_registrations').insert([mapKeysToSnakeCase(newReg)]).select();
-                      if (error) {
-                        toast.error('Erro ao cadastrar cliente: ' + error.message);
-                        return;
-                      }
-                      if (data) {
-                        setClientRegistrations(prev => [...prev, mapKeysToCamelCase(data[0])]);
-                        toast.success('Ficha de cliente cadastrada com sucesso!');
-                      }
-                    }}
-                    onUpdateClient={async (updatedReg) => {
-                      const { error } = await supabase.from('client_registrations').update(mapKeysToSnakeCase(updatedReg)).eq('id', updatedReg.id);
-                      if (error) {
-                        toast.error('Erro ao atualizar cliente: ' + error.message);
-                        return;
-                      }
-                      setClientRegistrations(prev => prev.map(r => r.id === updatedReg.id ? updatedReg : r));
-                    }}
-                  />
+                  <ProtectedRoute requiredPermission="can_view_sellers">
+                    <SellersView 
+                      sellers={sellers}
+                      registrations={clientRegistrations}
+                      onAddSeller={async (newSeller) => {
+                        const { data, error } = await supabase.from('sellers').insert([mapKeysToSnakeCase(newSeller)]).select();
+                        if (error) {
+                          toast.error('Erro ao adicionar vendedor: ' + error.message);
+                          return;
+                        }
+                        if (data) setSellers(prev => [...prev, mapKeysToCamelCase(data[0])]);
+                      }}
+                      onRegisterClient={async (newReg) => {
+                        const { data, error } = await supabase.from('client_registrations').insert([mapKeysToSnakeCase(newReg)]).select();
+                        if (error) {
+                          toast.error('Erro ao cadastrar cliente: ' + error.message);
+                          return;
+                        }
+                        if (data) {
+                          setClientRegistrations(prev => [...prev, mapKeysToCamelCase(data[0])]);
+                          toast.success('Ficha de cliente cadastrada com sucesso!');
+                        }
+                      }}
+                      onUpdateClient={async (updatedReg) => {
+                        const { error } = await supabase.from('client_registrations').update(mapKeysToSnakeCase(updatedReg)).eq('id', updatedReg.id);
+                        if (error) {
+                          toast.error('Erro ao atualizar cliente: ' + error.message);
+                          return;
+                        }
+                        setClientRegistrations(prev => prev.map(r => r.id === updatedReg.id ? updatedReg : r));
+                      }}
+                    />
+                  </ProtectedRoute>
                 )}
                 { activeTab === 'clients' && (
-                  <ClientsView registrations={clientRegistrations} />
+                  <ProtectedRoute requiredPermission="can_view_sellers">
+                    <ClientsView registrations={clientRegistrations} />
+                  </ProtectedRoute>
                 )}
                 {activeTab === 'settings' && (
                   <Settings 

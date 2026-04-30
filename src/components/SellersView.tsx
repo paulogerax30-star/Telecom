@@ -17,7 +17,8 @@ import {
   Save,
   Briefcase,
   DollarSign,
-  Database
+  Database,
+  Server
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -513,21 +514,27 @@ export default function SellersView({ sellers, registrations, onAddSeller, onReg
               </div>
 
               {/* Section: Tarifação */}
-              <div className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm space-y-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
-                    <DollarSign className="w-4 h-4" />
+              <div className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+                      <DollarSign className="w-4 h-4" />
+                    </div>
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Valores/Tarifação <span className="text-rose-500">*</span></h3>
                   </div>
-                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Valores/Tarifação <span className="text-rose-500">*</span></h3>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{clientForm.rates.length}/20</span>
                 </div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">(se aplicável, separar por rota)</p>
-                <textarea 
-                  value={clientForm.rates}
-                  onChange={(e) => setClientForm(prev => ({ ...prev, rates: e.target.value }))}
-                  placeholder="Ex: ANTI SPAM = 0,050 | CLI ABERTA = 0,052"
-                  rows={4}
-                  className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all resize-none"
-                />
+                <div className="relative">
+                  <input 
+                    type="text"
+                    value={clientForm.rates}
+                    onChange={(e) => setClientForm(prev => ({ ...prev, rates: e.target.value.substring(0, 20) }))}
+                    placeholder="Ex: 0,050 | 0,052"
+                    maxLength={20}
+                    className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+                  />
+                  <p className="mt-2 text-[9px] text-slate-400 font-medium uppercase tracking-wider italic">Campo reduzido (máx 20 caracteres)</p>
+                </div>
               </div>
 
               {/* Section: Cobrança & NF */}
@@ -560,22 +567,44 @@ export default function SellersView({ sellers, registrations, onAddSeller, onReg
                 </div>
 
                 <div className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm space-y-6">
-                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Escolher Servidor <span className="text-rose-500">*</span></h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+                      <Server className="w-4 h-4" />
+                    </div>
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Escolher Servidor <span className="text-rose-500">*</span></h3>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {SERVER_OPTIONS.map((server) => (
-                      <button 
+                      <motion.button 
                         key={server}
                         type="button"
+                        whileHover={{ scale: 1.02, translateY: -2 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => setClientForm(prev => ({ ...prev, serverId: server }))}
                         className={cn(
-                          "py-5 rounded-2xl border-2 font-black text-base uppercase tracking-widest transition-all",
+                          "relative group overflow-hidden py-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center gap-2",
                           clientForm.serverId === server 
-                            ? "border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-200" 
-                            : "border-slate-100 bg-slate-50 text-slate-400 hover:border-slate-200 hover:bg-slate-100"
+                            ? "border-blue-600 bg-blue-600 text-white shadow-xl shadow-blue-200" 
+                            : "border-slate-100 bg-slate-50 text-slate-400 hover:border-blue-200 hover:bg-white hover:text-blue-500"
                         )}
                       >
-                        {server}
-                      </button>
+                        {clientForm.serverId === server && (
+                          <motion.div 
+                            layoutId="activeServer"
+                            className="absolute inset-0 bg-gradient-to-br from-blue-600 to-blue-700 -z-10"
+                          />
+                        )}
+                        <Server className={cn(
+                          "w-5 h-5 transition-colors",
+                          clientForm.serverId === server ? "text-blue-100" : "text-slate-300 group-hover:text-blue-400"
+                        )} />
+                        <span className="font-black text-base uppercase tracking-widest">{server}</span>
+                        {clientForm.serverId === server && (
+                          <div className="absolute top-1.5 right-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-blue-200 animate-pulse" />
+                          </div>
+                        )}
+                      </motion.button>
                     ))}
                   </div>
                 </div>

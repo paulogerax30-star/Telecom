@@ -6,8 +6,7 @@ import { toast } from 'sonner';
 
 export default function Auth({ onAuthSuccess }: { onAuthSuccess: (user: any) => void }) {
   const [loading, setLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -16,86 +15,86 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: (user: any) => 
     setLoading(true);
 
     try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-        toast.success('Registration successful! Please check your email.');
+      // Master mapping to real email
+      let email = '';
+      const cleanUsername = username.toLowerCase().trim();
+      
+      if (cleanUsername === 'pauloricardo') {
+        email = 'paulinhosheldom@gmail.com';
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        toast.success('Welcome back!');
-        if (data.user) onAuthSuccess(data.user);
+        email = `${cleanUsername}@gerax.local`;
       }
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      
+      if (error) throw error;
+      toast.success('Acesso autorizado!');
+      if (data.user) onAuthSuccess(data.user);
     } catch (error: any) {
-      toast.error(error.message || 'An error occurred');
+      toast.error('Credenciais inválidas ou acesso negado');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#1E293B] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-4">
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden"
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="max-w-md w-full bg-white rounded-[40px] shadow-2xl overflow-hidden border border-slate-100"
       >
-        <div className="p-8 bg-blue-600 flex flex-col items-center justify-center text-white">
-          <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-4">
+        <div className="p-10 bg-gradient-to-br from-blue-600 to-indigo-700 flex flex-col items-center justify-center text-white relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
+          <div className="w-20 h-20 bg-white/20 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-6 shadow-xl">
             <Database className="w-10 h-10" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">TelecomRoute</h1>
-          <p className="text-blue-100 mt-2">Sistema de BI & Gestão de Dados</p>
+          <h1 className="text-4xl font-black tracking-tight mb-1">GERAX</h1>
+          <p className="text-blue-100 text-sm font-bold uppercase tracking-[0.2em] opacity-80">Telecom Router</p>
         </div>
 
-        <div className="p-8">
-          <div className="flex bg-slate-100 rounded-xl p-1 mb-8">
-            <button 
-              onClick={() => setIsSignUp(false)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${!isSignUp ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              <LogIn className="w-4 h-4" /> Entrar
-            </button>
-            <button 
-              onClick={() => setIsSignUp(true)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${isSignUp ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              <UserPlus className="w-4 h-4" /> Criar Conta
-            </button>
+        <div className="p-10">
+          <div className="mb-8">
+            <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Login do Sistema</h2>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Insira suas credenciais de acesso</p>
           </div>
 
-          <form onSubmit={handleAuth} className="space-y-5">
+          <form onSubmit={handleAuth} className="space-y-6">
             <div>
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">E-mail</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Nome de Usuário</label>
+              <div className="relative group">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center group-focus-within:bg-blue-50 transition-all">
+                  <Mail className="w-5 h-5 text-slate-400 group-focus-within:text-blue-500 transition-all" />
+                </div>
                 <input 
-                  type="email" 
+                  type="text" 
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
-                  placeholder="seu@email.com"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full pl-16 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-bold text-slate-700 placeholder:text-slate-300"
+                  placeholder="ex: pauloricardo"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Senha</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Senha de Acesso</label>
+              <div className="relative group">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center group-focus-within:bg-blue-50 transition-all">
+                  <Lock className="w-5 h-5 text-slate-400 group-focus-within:text-blue-500 transition-all" />
+                </div>
                 <input 
                   type={showPassword ? "text" : "password"} 
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-11 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
-                  placeholder="••••••••"
+                  className="w-full pl-16 pr-14 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-bold text-slate-700 placeholder:text-slate-300"
+                  placeholder="••••••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -105,15 +104,17 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: (user: any) => 
             <button 
               disabled={loading}
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-500/30 transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50 disabled:active:scale-100"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest py-5 rounded-[20px] shadow-xl shadow-blue-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50"
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isSignUp ? 'Finalizar Cadastro' : 'Acessar Sistema')}
+              {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Acessar Terminal'}
             </button>
           </form>
 
-          <p className="mt-8 text-center text-sm text-slate-500 font-medium">
-            Sistema Gerax BI v2.0 &copy; {new Date().getFullYear()}
-          </p>
+          <div className="mt-10 pt-8 border-t border-slate-100 text-center">
+            <p className="text-[10px] text-slate-300 font-bold uppercase tracking-widest">
+              Acesso Restrito &copy; GERAX TELECOM {new Date().getFullYear()}
+            </p>
+          </div>
         </div>
       </motion.div>
     </div>

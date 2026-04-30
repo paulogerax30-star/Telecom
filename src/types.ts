@@ -124,6 +124,20 @@ export interface ClientRegistration {
   createdAt: string;
 }
 
+export type UserRole = 'MASTER' | 'USER';
+
+export interface UserPermissions {
+  user_id: string;
+  username: string;
+  role: UserRole;
+  can_view_finance: boolean;
+  can_manage_routes: boolean;
+  can_view_sellers: boolean;
+  can_manage_tickets: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Commission {
   id: string;
   sellerId: string;
