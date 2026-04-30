@@ -338,8 +338,10 @@ export default function App() {
               <div className="h-8 w-px bg-slate-200 mx-1"></div>
               <div className="flex items-center gap-3 pl-2">
                 <div className="text-right hidden sm:block">
-                  <p className="text-xs font-black text-slate-800 leading-none uppercase tracking-wider">Operador Técnico</p>
-                  <p className="text-[10px] font-bold text-slate-400 mt-1">paulinhosheldom@gmail.com</p>
+                  <p className="text-xs font-black text-slate-800 leading-none uppercase tracking-wider">
+                    {isMaster ? 'Administrador Master' : 'Operador Técnico'}
+                  </p>
+                  <p className="text-[10px] font-bold text-slate-400 mt-1">{user?.email}</p>
                 </div>
                 <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center text-slate-700 font-black border border-slate-200 shadow-sm transition-transform hover:scale-105 cursor-pointer">
                   PS

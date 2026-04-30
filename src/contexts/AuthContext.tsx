@@ -28,9 +28,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (error) {
-        console.error('Error fetching permissions:', error);
+        console.error('Erro ao buscar permissões:', error);
         return null;
       }
+      console.log('Permissões carregadas:', data);
       return data as UserPermissions;
     } catch (err) {
       console.error('Unexpected error fetching permissions:', err);

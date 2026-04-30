@@ -1,36 +1,32 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ path: '.env' });
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-async function checkAdditionalInfo() {
-  const dummy = {
-    seller_id: '11111111-1111-1111-1111-111111111111',
-    seller_name: 'Test',
-    client_name: 'Test Client 2',
-    cnpj: '00.000.000/0000-01',
-    contact: 'Test Contact',
-    contracted_routes: ['Test'],
-    rates: 'Test',
-    billing_type: 'Test',
-    server_id: 'Test',
-    ips: 'Test',
-    approx_channels: 'Test',
-    status: 'ANALYSIS',
-    additional_info: 'This is a test'
-  };
-
-  const { error: insertError } = await supabase.from('client_registrations').insert([dummy]).select();
-  if (insertError) {
-    console.log('Insert error with additional_info:', insertError.message);
+async function checkSchema() {
+  const { data, error } = await supabase.rpc('get_schema_details'); // This might not exist
+  
+  if (error) {
+    console.log('RPC get_schema_details failed, trying direct query...');
+    // Fallback to querying user_permissions
+    const { data: cols, error: colError } = await supabase
+      .from('user_permissions')
+      .select('*')
+      .limit(1);
+    
+    if (colError) {
+      console.error('Error fetching user_permissions:', colError.message);
+    } else {
+      console.log('user_permissions sample data:', cols);
+    }
   } else {
-    console.log('Insert with additional_info successful!');
+    console.log('Schema details:', data);
   }
 }
 
-checkAdditionalInfo();
+checkSchema();

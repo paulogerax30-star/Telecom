@@ -3,14 +3,19 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = (supabaseUrl && supabaseAnonKey) 
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : {
-      auth: {
-        getSession: async () => ({ data: { session: null } }),
-        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-        signOut: async () => {},
-      },
+export const supabase = (() => {
+  if (supabaseUrl && supabaseAnonKey) {
+    return createClient(supabaseUrl, supabaseAnonKey);
+  }
+  
+  console.warn('⚠️ Supabase environment variables are missing! Using mock mode.');
+  return {
+    auth: {
+      getSession: async () => ({ data: { session: null } }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      signInWithPassword: async () => ({ data: { user: null }, error: new Error('Modo Mock: Configure as variáveis do Supabase para fazer login.') }),
+      signOut: async () => {},
+    },
       from: (table: string) => {
         const queryObj = {
           select: (columns?: string) => {
@@ -40,4 +45,5 @@ export const supabase = (supabaseUrl && supabaseAnonKey)
         return queryObj as any;
       }
     } as any;
+})();
 

@@ -127,6 +127,7 @@ export interface ClientRegistration {
 export type UserRole = 'MASTER' | 'USER';
 
 export interface UserPermissions {
+  id?: string;
   user_id: string;
   username: string;
   role: UserRole;
@@ -135,7 +136,7 @@ export interface UserPermissions {
   can_view_sellers: boolean;
   can_manage_tickets: boolean;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface Commission {

@@ -45,6 +45,7 @@ import {
   Pie
 } from 'recharts';
 import { cn } from '../lib/utils';
+import { useAuth } from '../contexts/AuthContext';
 import { Transaction, NettingSession, CDRRecord } from '../types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -60,6 +61,7 @@ export default function FinanceView({
   onAddTransaction: (t: Transaction) => void, 
   onUpdateTransaction: (t: Transaction) => void 
 }) {
+  const { user, isMaster } = useAuth();
   const [activeSubTab, setActiveSubTab] = useState<FinanceTab>('overview');
   const [selectedPayableCategory, setSelectedPayableCategory] = useState('Todas');
   const [nettingSessions, setNettingSessions] = useState<NettingSession[]>([]);
@@ -1328,7 +1330,9 @@ export default function FinanceView({
                     </div>
                     <div>
                       <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Responsável pelo Lançamento</p>
-                      <p className="text-xs font-black text-blue-900 uppercase">Operador Técnico (paulinhosheldom@gmail.com)</p>
+                      <p className="text-xs font-black text-blue-900 uppercase">
+                        {isMaster ? 'Administrador Master' : 'Operador Técnico'} ({user?.email})
+                      </p>
                     </div>
                   </div>
                 </div>

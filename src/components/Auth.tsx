@@ -31,7 +31,9 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: (user: any) => 
       toast.success('Acesso autorizado!');
       if (data.user) onAuthSuccess(data.user);
     } catch (error: any) {
-      toast.error('Credenciais inválidas ou acesso negado');
+      console.error('Erro de Autenticação:', error);
+      const message = error.message || 'Credenciais inválidas ou acesso negado';
+      toast.error(message);
     } finally {
       setLoading(false);
     }
