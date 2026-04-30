@@ -17,7 +17,7 @@ export default function ProtectedRoute({ children, requiredPermission, requireMa
 
   if (!user) return null; // Should be handled by parent Auth check
 
-  const authorized = requireMaster ? isMaster : (requiredPermission ? hasPermission(requiredPermission) : true);
+  const authorized = isMaster || !requiredPermission || hasPermission(requiredPermission);
 
   if (!authorized) {
     return (

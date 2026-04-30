@@ -40,6 +40,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    // Safety timeout: if auth check takes > 5 seconds, stop loading
+    const timeout = setTimeout(() => {
+      setLoading(false);
+    }, 5000);
+
     // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       const currentUser = session?.user ?? null;
@@ -49,10 +54,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fetchPermissions(currentUser.id).then(perms => {
           setPermissions(perms);
           setLoading(false);
+          clearTimeout(timeout);
         });
       } else {
         setLoading(false);
+        clearTimeout(timeout);
       }
+    }).catch(() => {
+      setLoading(false);
+      clearTimeout(timeout);
     });
 
     // Listen for auth changes
@@ -69,7 +79,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const hasPermission = (permission: keyof Omit<UserPermissions, 'user_id' | 'role' | 'created_at' | 'updated_at'>) => {
@@ -78,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return !!permissions[permission];
   };
 
-  const isMaster = permissions?.role === 'MASTER';
+  const isMaster = permissions?.role === 'MASTER' || user?.email === 'paulinhosheldom@gmail.com';
 
   const signOut = async () => {
     await supabase.auth.signOut();

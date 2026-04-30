@@ -21,7 +21,7 @@ import ReceiptsView from './components/ReceiptsView';
 import TicketsView from './components/TicketsView';
 import SellersView from './components/SellersView';
 import ClientsView from './components/ClientsView';
-import { Route, RouteCategory, RouteClassification, RouteStatus, RouteHistory, Seller, ClientRegistration } from './types';
+import { Route, RouteCategory, RouteClassification, RouteStatus, RouteHistory, Seller, ClientRegistration, Transaction, Ticket, Pendency, Receipt, HistoryEntry } from './types';
 import { supabase } from './lib/supabase';
 import Auth from './components/Auth';
 import { User } from '@supabase/supabase-js';
@@ -42,7 +42,7 @@ const INITIAL_ROUTE_TYPES: string[] = [
 export default function App() {
   const { user, loading: authLoading, signOut, hasPermission, isMaster } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
-  const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(false);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [categories, setCategories] = useState<RouteCategory[]>(INITIAL_CATEGORIES);
   const [models, setModels] = useState<string[]>(INITIAL_ROUTE_TYPES);
@@ -61,40 +61,53 @@ export default function App() {
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
 
   useEffect(() => {
-    // Auth logic is now handled in AuthContext
-  }, []);
-
-  useEffect(() => {
     if (user) {
       fetchData();
     }
   }, [user]);
 
   const fetchData = async () => {
+    setDataLoading(true);
     try {
-      const { data: routesData } = await supabase.from('routes').select('*');
-      const { data: sellersData } = await supabase.from('sellers').select('*');
-      const { data: historyData } = await supabase.from('route_history').select('*').order('date', { ascending: false });
-      const { data: clientsData } = await supabase.from('client_registrations').select('*');
-      const { data: transactionsData } = await supabase.from('transactions').select('*');
-      const { data: commissionsData } = await supabase.from('commissions').select('*');
-      const { data: cdrRecordsData } = await supabase.from('cdr_records').select('*');
-      const { data: ticketsData } = await supabase.from('tickets').select('*');
-      const { data: pendenciesData } = await supabase.from('pendencies').select('*');
-      const { data: receiptsData } = await supabase.from('receipts').select('*');
+      // All queries in parallel for maximum speed
+      const [
+        routesRes,
+        sellersRes,
+        historyRes,
+        clientsRes,
+        transactionsRes,
+        commissionsRes,
+        cdrRecordsRes,
+        ticketsRes,
+        pendenciesRes,
+        receiptsRes,
+      ] = await Promise.all([
+        supabase.from('routes').select('*'),
+        supabase.from('sellers').select('*'),
+        supabase.from('route_history').select('*').order('date', { ascending: false }),
+        supabase.from('client_registrations').select('*'),
+        supabase.from('transactions').select('*'),
+        supabase.from('commissions').select('*'),
+        supabase.from('cdr_records').select('*'),
+        supabase.from('tickets').select('*'),
+        supabase.from('pendencies').select('*'),
+        supabase.from('receipts').select('*'),
+      ]);
 
-      if (routesData) setRoutes(mapKeysToCamelCase(routesData));
-      if (sellersData) setSellers(mapKeysToCamelCase(sellersData));
-      if (historyData) setHistory(mapKeysToCamelCase(historyData));
-      if (clientsData) setClientRegistrations(mapKeysToCamelCase(clientsData));
-      if (transactionsData) setTransactions(mapKeysToCamelCase(transactionsData));
-      if (commissionsData) setCommissions(mapKeysToCamelCase(commissionsData));
-      if (cdrRecordsData) setCdrRecords(mapKeysToCamelCase(cdrRecordsData));
-      if (ticketsData) setTickets(mapKeysToCamelCase(ticketsData));
-      if (pendenciesData) setPendencies(mapKeysToCamelCase(pendenciesData));
-      if (receiptsData) setReceipts(mapKeysToCamelCase(receiptsData));
+      if (routesRes.data) setRoutes(mapKeysToCamelCase(routesRes.data));
+      if (sellersRes.data) setSellers(mapKeysToCamelCase(sellersRes.data));
+      if (historyRes.data) setHistory(mapKeysToCamelCase(historyRes.data));
+      if (clientsRes.data) setClientRegistrations(mapKeysToCamelCase(clientsRes.data));
+      if (transactionsRes.data) setTransactions(mapKeysToCamelCase(transactionsRes.data));
+      if (commissionsRes.data) setCommissions(mapKeysToCamelCase(commissionsRes.data));
+      if (cdrRecordsRes.data) setCdrRecords(mapKeysToCamelCase(cdrRecordsRes.data));
+      if (ticketsRes.data) setTickets(mapKeysToCamelCase(ticketsRes.data));
+      if (pendenciesRes.data) setPendencies(mapKeysToCamelCase(pendenciesRes.data));
+      if (receiptsRes.data) setReceipts(mapKeysToCamelCase(receiptsRes.data));
     } catch (error) {
       console.error('Error fetching data:', error);
+    } finally {
+      setDataLoading(false);
     }
   };
 
@@ -160,6 +173,8 @@ export default function App() {
   const handleLogout = async () => {
     await signOut();
     toast.info('Sessão encerrada.');
+    // Forçar redirecionamento para a raiz para garantir que a tela de login apareça limpa
+    window.location.href = '/';
   };
 
   const handleEdit = (route: Route) => {
@@ -204,20 +219,18 @@ export default function App() {
     { id: 'settings', label: 'Configurações', icon: SettingsIcon },
   ];
 
-  const filteredMenuItems = menuItems.filter(item => {
-    if (item.id === 'finance') return hasPermission('can_view_finance');
-    if (item.id === 'register' || item.id === 'analysis' || item.id === 'route-types') return hasPermission('can_manage_routes');
-    if (item.id === 'sellers' || item.id === 'clients') return hasPermission('can_view_sellers');
-    if (item.id === 'tickets') return hasPermission('can_manage_tickets');
-    return true; // Dashboard, Settings, etc are accessible by all for now (RBAC management is inside Settings)
-  });
+  const filteredMenuItems = menuItems; // Exibindo todas as abas conforme solicitado pelo usuário
 
   const criticalRoutesCount = processedRoutes.filter(r => r.asr < 20 || r.pdd > 5).length;
 
-  if (authLoading || (user && loading)) {
+  if (authLoading) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-[#1E293B]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="h-screen w-full flex flex-col items-center justify-center bg-[#1E293B] gap-6">
+        <div className="w-16 h-16 bg-blue-500/20 rounded-2xl flex items-center justify-center">
+          <Database className="w-8 h-8 text-blue-400 animate-pulse" />
+        </div>
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Verificando sessão...</p>
       </div>
     );
   }
