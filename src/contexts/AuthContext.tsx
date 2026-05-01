@@ -111,9 +111,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isMaster = permissions?.role === 'MASTER' || user?.email === 'paulinhosheldom@gmail.com';
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setPermissions(null);
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Erro ao encerrar sessão no Supabase:', error);
+    } finally {
+      setUser(null);
+      setPermissions(null);
+      localStorage.clear();
+      sessionStorage.clear();
+    }
   };
 
   const value = {

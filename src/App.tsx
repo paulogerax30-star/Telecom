@@ -181,10 +181,18 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    await signOut();
-    toast.info('Sessão encerrada.');
-    // Forçar redirecionamento para a raiz para garantir que a tela de login apareça limpa
-    window.location.href = '/';
+    try {
+      await signOut();
+      toast.success('Sessão encerrada com sucesso.');
+      // Forçar o estado local a limpar
+      setActiveTab('dashboard');
+      setEditingRoute(null);
+      // Redirecionamento forçado para a raiz para garantir que o Auth.tsx seja renderizado
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Erro ao processar logout:', error);
+      window.location.href = '/';
+    }
   };
 
   const handleEdit = (route: Route) => {
