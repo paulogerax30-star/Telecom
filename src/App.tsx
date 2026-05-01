@@ -62,6 +62,12 @@ export default function App() {
   const [nettingSessions, setNettingSessions] = useState<NettingSession[]>([]);
 
   useEffect(() => {
+    // DIAGNÓSTICO DE CONEXÃO SUPABASE
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (error) console.error('❌ Erro Supabase:', error);
+      else console.log('✅ Supabase conectado. Sessão:', data.session ? 'ativa' : 'nenhuma');
+    });
+
     if (user) {
       fetchData();
     }
