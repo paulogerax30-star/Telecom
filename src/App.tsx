@@ -75,50 +75,54 @@ export default function App() {
 
   const fetchData = async () => {
     setDataLoading(true);
-    try {
-      // All queries in parallel for maximum speed
-      const [
-        routesRes,
-        sellersRes,
-        historyRes,
-        clientsRes,
-        transactionsRes,
-        commissionsRes,
-        cdrRecordsRes,
-        ticketsRes,
-        pendenciesRes,
-        receiptsRes,
-        nettingRes,
-      ] = await Promise.all([
-        supabase.from('routes').select('*'),
-        supabase.from('sellers').select('*'),
-        supabase.from('route_history').select('*').order('date', { ascending: false }),
-        supabase.from('client_registrations').select('*'),
-        supabase.from('transactions').select('*'),
-        supabase.from('commissions').select('*'),
-        supabase.from('cdr_records').select('*'),
-        supabase.from('tickets').select('*'),
-        supabase.from('pendencies').select('*'),
-        supabase.from('receipts').select('*'),
-        supabase.from('netting_sessions').select('*'),
-      ]);
+    
+    const safe = async (query: any) => {
+      try {
+        const { data, error } = await query;
+        if (error) throw error;
+        return data;
+      } catch (e) {
+        console.error('Fetch error:', e);
+        return null;
+      }
+    };
 
-      if (routesRes.data) setRoutes(mapKeysToCamelCase(routesRes.data));
-      if (sellersRes.data) setSellers(mapKeysToCamelCase(sellersRes.data));
-      if (historyRes.data) setHistory(mapKeysToCamelCase(historyRes.data));
-      if (clientsRes.data) setClientRegistrations(mapKeysToCamelCase(clientsRes.data));
-      if (transactionsRes.data) setTransactions(mapKeysToCamelCase(transactionsRes.data));
-      if (commissionsRes.data) setCommissions(mapKeysToCamelCase(commissionsRes.data));
-      if (cdrRecordsRes.data) setCdrRecords(mapKeysToCamelCase(cdrRecordsRes.data));
-      if (ticketsRes.data) setTickets(mapKeysToCamelCase(ticketsRes.data));
-      if (pendenciesRes.data) setPendencies(mapKeysToCamelCase(pendenciesRes.data));
-      if (receiptsRes.data) setReceipts(mapKeysToCamelCase(receiptsRes.data));
-      if (nettingRes && nettingRes.data) setNettingSessions(mapKeysToCamelCase(nettingRes.data));
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setDataLoading(false);
-    }
+    const [
+      routesData,
+      sellersData,
+      historyData,
+      clientsData,
+      transactionsData,
+      commissionsData,
+      cdrRecordsData,
+      ticketsData,
+      pendenciesData,
+      receiptsData
+    ] = await Promise.all([
+      safe(supabase.from('routes').select('*')),
+      safe(supabase.from('sellers').select('*')),
+      safe(supabase.from('route_history').select('*').order('date', { ascending: false })),
+      safe(supabase.from('client_registrations').select('*')),
+      safe(supabase.from('transactions').select('*')),
+      safe(supabase.from('commissions').select('*')),
+      safe(supabase.from('cdr_records').select('*')),
+      safe(supabase.from('tickets').select('*')),
+      safe(supabase.from('pendencies').select('*')),
+      safe(supabase.from('receipts').select('*'))
+    ]);
+
+    if (routesData) setRoutes(mapKeysToCamelCase(routesData));
+    if (sellersData) setSellers(mapKeysToCamelCase(sellersData));
+    if (historyData) setHistory(mapKeysToCamelCase(historyData));
+    if (clientsData) setClientRegistrations(mapKeysToCamelCase(clientsData));
+    if (transactionsData) setTransactions(mapKeysToCamelCase(transactionsData));
+    if (commissionsData) setCommissions(mapKeysToCamelCase(commissionsData));
+    if (cdrRecordsData) setCdrRecords(mapKeysToCamelCase(cdrRecordsData));
+    if (ticketsData) setTickets(mapKeysToCamelCase(ticketsData));
+    if (pendenciesData) setPendencies(mapKeysToCamelCase(pendenciesData));
+    if (receiptsData) setReceipts(mapKeysToCamelCase(receiptsData));
+    
+    setDataLoading(false);
   };
 
   const addHistoryEntry = async (route: Route, type: string, details: string) => {

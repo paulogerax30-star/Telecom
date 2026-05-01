@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'motion/react';
-import { LogIn, UserPlus, Mail, Lock, Loader2, Database, Eye, EyeOff, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { LogIn, UserPlus, Mail, Lock, Loader2, Eye, EyeOff, CheckCircle2, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
 type AuthMode = 'signin' | 'signup';
@@ -13,6 +13,20 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: (user: any) => 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  const goToSignIn = () => {
+    setMode('signin');
+    setEmail('');
+    setPassword('');
+    setConfirmPassword('');
+  };
+
+  const goToSignUp = () => {
+    setMode('signup');
+    setEmail('');
+    setPassword('');
+    setConfirmPassword('');
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +53,7 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: (user: any) => 
             onAuthSuccess(data.user);
           } else {
             toast.info('Conta criada! Verifique seu e-mail para confirmar o cadastro ou tente entrar.');
-            setMode('signin');
+            goToSignIn();
           }
         }
       } else {
@@ -76,6 +90,15 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: (user: any) => 
         className="max-w-md w-full bg-white rounded-[40px] shadow-2xl overflow-hidden border border-slate-100"
       >
         <div className="p-10 bg-gradient-to-br from-blue-600 to-indigo-700 flex flex-col items-center justify-center text-white relative">
+          {mode === 'signup' && (
+            <button 
+              onClick={goToSignIn}
+              className="absolute top-6 left-6 flex items-center gap-2 text-white/70 hover:text-white transition-colors text-[10px] font-black uppercase tracking-widest"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Voltar ao Login
+            </button>
+          )}
           <div className="w-16 h-16 bg-white/20 backdrop-blur-xl rounded-2xl flex items-center justify-center mb-4 shadow-xl">
             {mode === 'signin' ? <ShieldCheck className="w-8 h-8" /> : <UserPlus className="w-8 h-8" />}
           </div>
@@ -89,7 +112,8 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: (user: any) => 
           {/* Tabs */}
           <div className="flex bg-slate-100 p-1.5 rounded-2xl mb-8">
             <button 
-              onClick={() => setMode('signin')}
+              type="button"
+              onClick={goToSignIn}
               className={cn(
                 "flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
                 mode === 'signin' ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
@@ -98,7 +122,8 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: (user: any) => 
               Entrar
             </button>
             <button 
-              onClick={() => setMode('signup')}
+              type="button"
+              onClick={goToSignUp}
               className={cn(
                 "flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
                 mode === 'signup' ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
@@ -211,4 +236,3 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: (user: any) => 
 function cn(...classes: any[]) {
   return classes.filter(Boolean).join(' ');
 }
-
