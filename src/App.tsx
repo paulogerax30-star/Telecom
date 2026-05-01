@@ -21,7 +21,7 @@ import ReceiptsView from './components/ReceiptsView';
 import TicketsView from './components/TicketsView';
 import SellersView from './components/SellersView';
 import ClientsView from './components/ClientsView';
-import { Route, RouteCategory, RouteClassification, RouteStatus, RouteHistory, Seller, ClientRegistration, Transaction, Ticket, Pendency, Receipt, HistoryEntry } from './types';
+import { Route, RouteCategory, RouteClassification, RouteStatus, RouteHistory, Seller, ClientRegistration, Transaction, Ticket, Pendency, Receipt, HistoryEntry, NettingSession } from './types';
 import { supabase } from './lib/supabase';
 import Auth from './components/Auth';
 import { User } from '@supabase/supabase-js';

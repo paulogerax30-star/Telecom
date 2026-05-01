@@ -19,7 +19,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [permissions, setPermissions] = useState<UserPermissions | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchPermissions = async (userId: string, email?: string) => {
+  const fetchPermissions = async (userId: string, email?: string): Promise<UserPermissions | null> => {
     try {
       const { data, error } = await supabase
         .from('user_permissions')
@@ -30,7 +30,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
       
       if (data) {
-        setPermissions(data as UserPermissions);
+        const perms = data as UserPermissions;
+        setPermissions(perms);
+        return perms;
       } else {
         const fallbackPerms = {
           role: email === 'paulinhosheldom@gmail.com' ? 'MASTER' : 'USER',
@@ -40,16 +42,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           can_manage_tickets: true
         } as UserPermissions;
         setPermissions(fallbackPerms);
+        return fallbackPerms;
       }
     } catch (err) {
       console.error('Erro ao buscar permissões:', err);
-      setPermissions({
+      const errorPerms = {
         role: email === 'paulinhosheldom@gmail.com' ? 'MASTER' : 'USER',
         can_view_finance: true,
         can_manage_routes: true,
         can_view_sellers: true,
         can_manage_tickets: true
-      } as UserPermissions);
+      } as UserPermissions;
+      setPermissions(errorPerms);
+      return errorPerms;
     }
   };
 
@@ -65,8 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(currentUser);
       
       if (currentUser) {
-        fetchPermissions(currentUser.id).then(perms => {
-          setPermissions(perms);
+        fetchPermissions(currentUser.id).then(() => {
           setLoading(false);
           clearTimeout(timeout);
         });
@@ -85,8 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(currentUser);
       
       if (currentUser) {
-        const perms = await fetchPermissions(currentUser.id);
-        setPermissions(perms);
+        await fetchPermissions(currentUser.id);
       } else {
         setPermissions(null);
       }
