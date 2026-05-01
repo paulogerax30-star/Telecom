@@ -59,6 +59,7 @@ export default function App() {
   const [pendencies, setPendencies] = useState<Pendency[]>([]);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
+  const [nettingSessions, setNettingSessions] = useState<NettingSession[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -81,6 +82,7 @@ export default function App() {
         ticketsRes,
         pendenciesRes,
         receiptsRes,
+        nettingRes,
       ] = await Promise.all([
         supabase.from('routes').select('*'),
         supabase.from('sellers').select('*'),
@@ -92,6 +94,7 @@ export default function App() {
         supabase.from('tickets').select('*'),
         supabase.from('pendencies').select('*'),
         supabase.from('receipts').select('*'),
+        supabase.from('netting_sessions').select('*'),
       ]);
 
       if (routesRes.data) setRoutes(mapKeysToCamelCase(routesRes.data));
@@ -104,6 +107,7 @@ export default function App() {
       if (ticketsRes.data) setTickets(mapKeysToCamelCase(ticketsRes.data));
       if (pendenciesRes.data) setPendencies(mapKeysToCamelCase(pendenciesRes.data));
       if (receiptsRes.data) setReceipts(mapKeysToCamelCase(receiptsRes.data));
+      if (nettingRes && nettingRes.data) setNettingSessions(mapKeysToCamelCase(nettingRes.data));
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -391,6 +395,10 @@ export default function App() {
                   <ProtectedRoute requiredPermission="can_view_finance">
                     <FinanceView 
                       transactions={transactions}
+                      sellers={sellers}
+                      commissions={commissions}
+                      cdrRecords={cdrRecords}
+                      nettingSessions={nettingSessions}
                       onAddTransaction={async (newT) => {
                         const { data, error } = await supabase.from('transactions').insert([mapKeysToSnakeCase(newT)]).select();
                         if (error) {

@@ -46,25 +46,36 @@ import {
 } from 'recharts';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
-import { Transaction, NettingSession, CDRRecord } from '../types';
+import { Transaction, NettingSession, CDRRecord, Seller, Commission } from '../types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { formatBRL } from '../lib/utils';
 
 type FinanceTab = 'overview' | 'cashflow' | 'billing' | 'payable' | 'receivable' | 'netting' | 'commissions';
+
+interface FinanceViewProps {
+  transactions: Transaction[];
+  onAddTransaction: (t: Transaction) => void;
+  onUpdateTransaction: (t: Transaction) => void;
+  sellers?: Seller[];
+  commissions?: Commission[];
+  cdrRecords?: CDRRecord[];
+  nettingSessions?: NettingSession[];
+}
 
 export default function FinanceView({ 
   transactions, 
   onAddTransaction, 
-  onUpdateTransaction 
-}: { 
-  transactions: Transaction[], 
-  onAddTransaction: (t: Transaction) => void, 
-  onUpdateTransaction: (t: Transaction) => void 
-}) {
+  onUpdateTransaction,
+  sellers = [],
+  commissions = [],
+  cdrRecords = [],
+  nettingSessions: nettingSessionsProp = []
+}: FinanceViewProps) {
   const { user, isMaster } = useAuth();
   const [activeSubTab, setActiveSubTab] = useState<FinanceTab>('overview');
   const [selectedPayableCategory, setSelectedPayableCategory] = useState('Todas');
-  const [nettingSessions, setNettingSessions] = useState<NettingSession[]>([]);
+  const [nettingSessions, setNettingSessions] = useState<NettingSession[]>(nettingSessionsProp);
   const [isPayableModalOpen, setIsPayableModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [financialCategories, setFinancialCategories] = useState<string[]>([
@@ -210,22 +221,46 @@ export default function FinanceView({
     };
   }, [transactions]);
 
-  const chartData = [
-    { name: 'Seg', income: 4000, expense: 2400 },
-    { name: 'Ter', income: 3000, expense: 1398 },
-    { name: 'Qua', income: 2000, expense: 9800 },
-    { name: 'Qui', income: 2780, expense: 3908 },
-    { name: 'Sex', income: 1890, expense: 4800 },
-    { name: 'Sáb', income: 2390, expense: 3800 },
-    { name: 'Dom', income: 3490, expense: 4300 },
-  ];
+  // Gráfico de evolução financeira — dados REAIS a partir das transações
+  const chartData = useMemo(() => {
+    const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const grouped: Record<string, { income: number; expense: number }> = {};
+    dayNames.forEach(d => { grouped[d] = { income: 0, expense: 0 }; });
 
-  const categoryData = [
-    { name: 'Billing', value: 15000 },
-    { name: 'Interconexão', value: 13000 },
-    { name: 'Custos Fixos', value: 1200 },
-    { name: 'Comissões', value: 2500 },
-  ];
+    transactions.forEach(t => {
+      try {
+        const date = new Date(t.dueDate || t.createdAt);
+        const dayName = dayNames[date.getDay()];
+        if (t.type === 'INCOME') grouped[dayName].income += t.amount;
+        else grouped[dayName].expense += t.amount;
+      } catch { /* data inválida, ignorar */ }
+    });
+
+    // Reordenar começando por Seg
+    const ordered = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+    return ordered.map(name => ({ name, ...grouped[name] }));
+  }, [transactions]);
+
+  // Composição de custos — dados REAIS a partir das transações de EXPENSE
+  const categoryData = useMemo(() => {
+    const catMap: Record<string, number> = {};
+    transactions
+      .filter(t => t.type === 'EXPENSE')
+      .forEach(t => {
+        const catName = t.category?.replace(/_/g, ' ') || 'Outros';
+        catMap[catName] = (catMap[catName] || 0) + t.amount;
+      });
+    // Se não houver despesas, incluir receitas para ter algo no gráfico
+    if (Object.keys(catMap).length === 0) {
+      transactions
+        .filter(t => t.type === 'INCOME')
+        .forEach(t => {
+          const catName = t.category?.replace(/_/g, ' ') || 'Outros';
+          catMap[catName] = (catMap[catName] || 0) + t.amount;
+        });
+    }
+    return Object.entries(catMap).map(([name, value]) => ({ name, value }));
+  }, [transactions]);
 
   const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
 
@@ -874,7 +909,7 @@ export default function FinanceView({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {[].map((cdr: any) => (
+                      {cdrRecords.map((cdr: any) => (
                         <tr key={cdr.id} className="hover:bg-slate-50/50 transition-colors">
                           <td className="px-4 py-3 text-[10px] font-bold text-slate-600">{format(new Date(cdr.startTime), 'HH:mm:ss')}</td>
                           <td className="px-4 py-3 text-[10px] font-black text-slate-800">{cdr.destination}</td>
@@ -955,7 +990,7 @@ export default function FinanceView({
                 <button className="text-[10px] font-bold text-blue-600 uppercase hover:underline">Ver Todos</button>
               </div>
               <div className="space-y-4">
-                {[].map((seller: any, index) => (
+                {[...sellers].sort((a, b) => b.performanceScore - a.performanceScore).slice(0, 5).map((seller: any, index) => (
                   <div key={seller.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
                     <div className="flex items-center gap-3">
                       <div className={cn(
@@ -1076,7 +1111,7 @@ export default function FinanceView({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {[].map((c: any) => (
+                      {commissions.map((c: any) => (
                         <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
                           <td className="px-4 py-3">
                             <p className="text-xs font-black text-slate-800">{c.sellerName}</p>

@@ -236,6 +236,63 @@ def calculate_adaptive_score(df, mapping):
     return round(final_score, 1), classification, round(confidence, 1), families
 
 # =================================================================
+# MOTOR DE PROCESSAMENTO AVANÇADO (BATCH)
+# =================================================================
+
+def process_cdr_batch(df, mapping, batch_size=500):
+    """Processa e insere CDRs no Supabase em lotes para performance"""
+    if not supabase:
+        return False, "Supabase não configurado"
+    
+    # Preparar registros
+    records = []
+    for _, row in df.iterrows():
+        record = {
+            "start_time": str(row[mapping['datetime']]) if 'datetime' in mapping else datetime.now().isoformat(),
+            "origin": str(row[mapping['origin']]) if 'origin' in mapping else "",
+            "destination": str(row[mapping['destination']]) if 'destination' in mapping else "",
+            "duration_real": int(row[mapping['billed_time']]) if 'billed_time' in mapping else 0,
+            "duration_billed": int(row[mapping['billed_time']]) if 'billed_time' in mapping else 0,
+            "sale_value": float(row[mapping['value']]) if 'value' in mapping else 0.0,
+            "cost_value": float(row[mapping['value']]) * 0.7 if 'value' in mapping else 0.0, # Estimativa de custo 70%
+            "status": "SUCCESS",
+            "route_id": str(row[mapping['route']]) if 'route' in mapping else "DEFAULT"
+        }
+        record["profit"] = record["sale_value"] - record["cost_value"]
+        records.append(record)
+    
+    # Inserir em batches
+    try:
+        for i in range(0, len(records), batch_size):
+            batch = records[i:i + batch_size]
+            supabase.table("cdr_records").insert(batch).execute()
+        return True, f"{len(records)} CDRs processados e salvos."
+    except Exception as e:
+        return False, f"Erro no batch: {str(e)}"
+
+def calculate_netting(entity_id, competence):
+    """Calcula encontro de contas automático"""
+    if not supabase: return None
+    
+    # Buscar transações pendentes
+    res = supabase.table("transactions").select("*").eq("entity_id", entity_id).eq("competence", competence).execute()
+    txs = res.data
+    
+    receivable = sum(t['amount'] for t in txs if t['type'] == 'INCOME' and t['status'] != 'PAID')
+    payable = sum(t['amount'] for t in txs if t['type'] == 'EXPENSE' and t['status'] != 'PAID')
+    
+    netting_data = {
+        "entity_id": entity_id,
+        "entity_name": txs[0]['entity_name'] if txs else "Entidade Desconhecida",
+        "gross_receivable": receivable,
+        "gross_payable": payable,
+        "net_amount": receivable - payable,
+        "status": "PROPOSED"
+    }
+    
+    return netting_data
+
+# =================================================================
 # INTERFACE PRINCIPAL
 # =================================================================
 def main():

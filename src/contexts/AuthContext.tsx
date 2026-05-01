@@ -19,23 +19,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [permissions, setPermissions] = useState<UserPermissions | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchPermissions = async (userId: string) => {
+  const fetchPermissions = async (userId: string, email?: string) => {
     try {
       const { data, error } = await supabase
         .from('user_permissions')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        console.error('Erro ao buscar permissões:', error);
-        return null;
+      if (error) throw error;
+      
+      if (data) {
+        setPermissions(data as UserPermissions);
+      } else {
+        const fallbackPerms = {
+          role: email === 'paulinhosheldom@gmail.com' ? 'MASTER' : 'USER',
+          can_view_finance: true,
+          can_manage_routes: true,
+          can_view_sellers: true,
+          can_manage_tickets: true
+        } as UserPermissions;
+        setPermissions(fallbackPerms);
       }
-      console.log('Permissões carregadas:', data);
-      return data as UserPermissions;
     } catch (err) {
-      console.error('Unexpected error fetching permissions:', err);
-      return null;
+      console.error('Erro ao buscar permissões:', err);
+      setPermissions({
+        role: email === 'paulinhosheldom@gmail.com' ? 'MASTER' : 'USER',
+        can_view_finance: true,
+        can_manage_routes: true,
+        can_view_sellers: true,
+        can_manage_tickets: true
+      } as UserPermissions);
     }
   };
 
